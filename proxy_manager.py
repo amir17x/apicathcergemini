@@ -4,6 +4,7 @@ import logging
 import time
 from urllib.parse import urlparse
 import json
+import concurrent.futures
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, 
@@ -19,28 +20,134 @@ DEFAULT_PROXIES = [
     {"host": "198.8.94.170", "port": "4145", "username": "", "password": "", "type": "socks5"}
 ]
 
-def get_public_proxies():
-    """دریافت لیست پروکسی‌های عمومی از سرویس‌های آنلاین"""
+# منابع پروکسی آنلاین
+PROXY_SOURCES = {
+    'socks5': [
+        'https://api.proxyscrape.com/v2/?request=getproxies&protocol=socks5&timeout=10000&country=all',
+        'https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/socks5.txt',
+        'https://raw.githubusercontent.com/ShiftyTR/Proxy-List/master/socks5.txt',
+        'https://raw.githubusercontent.com/hookzof/socks5_list/master/proxy.txt',
+    ],
+    'socks4': [
+        'https://api.proxyscrape.com/v2/?request=getproxies&protocol=socks4&timeout=10000&country=all',
+        'https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/socks4.txt',
+        'https://raw.githubusercontent.com/ShiftyTR/Proxy-List/master/socks4.txt',
+    ],
+    'http': [
+        'https://api.proxyscrape.com/v2/?request=getproxies&protocol=http&timeout=10000&country=all',
+        'https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/http.txt',
+        'https://raw.githubusercontent.com/ShiftyTR/Proxy-List/master/http.txt',
+        'https://raw.githubusercontent.com/clarketm/proxy-list/master/proxy-list-raw.txt',
+    ],
+}
+
+# توضیحات و منابع پیشنهادی برای پروکسی
+PROXY_RESOURCES_INFO = """
+## منابع پیشنهادی برای پروکسی:
+
+1. **سایت‌های ارائه دهنده پروکسی رایگان:**
+   - ProxyScrape: https://proxyscrape.com
+   - Free-Proxy-List: https://free-proxy-list.net
+   - Geonode: https://geonode.com/free-proxy-list
+   - Spys.one: https://spys.one
+
+2. **مخازن GitHub با لیست پروکسی:**
+   - github.com/TheSpeedX/PROXY-List
+   - github.com/ShiftyTR/Proxy-List
+   - github.com/hookzof/socks5_list
+   - github.com/clarketm/proxy-list
+
+3. **سرویس‌های پروکسی خصوصی (پولی اما مطمئن):**
+   - Bright Data (Luminati): https://brightdata.com
+   - Oxylabs: https://oxylabs.io
+   - SmartProxy: https://smartproxy.com
+   - IPRoyal: https://iproyal.com
+
+## انواع پروکسی پشتیبانی شده:
+- SOCKS5: بهترین گزینه با پشتیبانی از همه پروتکل‌ها و احراز هویت
+- SOCKS4: سریع اما با محدودیت‌های بیشتر نسبت به SOCKS5
+- HTTP/HTTPS: مناسب برای وب اما محدودتر از SOCKS
+
+برای هر پروکسی، یک خط جداگانه وارد کنید. فرمت‌های پشتیبانی شده:
+- `host:port`
+- `protocol://host:port`
+- `protocol://username:password@host:port`
+
+مثال:
+```
+103.105.50.194:8080
+socks5://72.206.181.103:4145
+http://username:password@1.2.3.4:8080
+```
+"""
+
+def fetch_proxies_from_source(url, proxy_type):
+    """دریافت پروکسی از یک منبع خاص"""
     try:
-        # سعی در دریافت لیست پروکسی‌های socks5 از سرویس‌های آنلاین
-        response = requests.get('https://api.proxyscrape.com/v2/?request=getproxies&protocol=socks5&timeout=10000&country=all', timeout=10)
+        response = requests.get(url, timeout=10)
         if response.status_code == 200:
             proxies = []
             for line in response.text.strip().split('\n'):
-                if ':' in line:
-                    host, port = line.split(':')
-                    proxies.append({
-                        "host": host.strip(),
-                        "port": port.strip(),
-                        "username": "",
-                        "password": "",
-                        "type": "socks5"
-                    })
-            if proxies:
-                logger.info(f"دریافت {len(proxies)} پروکسی از سرویس آنلاین")
-                return proxies
+                line = line.strip()
+                if not line or len(line) < 7:  # حداقل طول معتبر (1.1.1.1:1)
+                    continue
+                    
+                try:
+                    if ':' in line:
+                        # حذف زمان بارگذاری یا توضیحات اضافی
+                        line = line.split('#')[0].strip()
+                        line = line.split(' ')[0].strip()
+                        
+                        # تلاش برای پارسینگ host:port
+                        host, port = line.split(':')
+                        if host and port and len(host.split('.')) == 4:  # بررسی فرمت IP
+                            proxies.append({
+                                "host": host.strip(),
+                                "port": port.strip(),
+                                "username": "",
+                                "password": "",
+                                "type": proxy_type
+                            })
+                except Exception:
+                    continue
+                    
+            logger.info(f"دریافت {len(proxies)} پروکسی {proxy_type} از {url}")
+            return proxies
     except Exception as e:
-        logger.warning(f"خطا در دریافت پروکسی‌های عمومی: {e}")
+        logger.warning(f"خطا در دریافت پروکسی‌های {proxy_type} از {url}: {e}")
+    
+    return []
+
+def get_public_proxies():
+    """دریافت لیست پروکسی‌های عمومی از سرویس‌های آنلاین"""
+    all_proxies = []
+    
+    # استفاده از ThreadPoolExecutor برای دریافت موازی پروکسی‌ها
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        future_to_url = {}
+        
+        # ارسال درخواست‌ها برای همه منابع
+        for proxy_type, urls in PROXY_SOURCES.items():
+            for url in urls:
+                future = executor.submit(fetch_proxies_from_source, url, proxy_type)
+                future_to_url[future] = (url, proxy_type)
+        
+        # دریافت نتایج
+        for future in concurrent.futures.as_completed(future_to_url):
+            url, proxy_type = future_to_url[future]
+            try:
+                proxies = future.result()
+                all_proxies.extend(proxies)
+            except Exception as e:
+                logger.error(f"خطا در پردازش نتایج پروکسی از {url}: {e}")
+    
+    # اگر پروکسی دریافت شد
+    if all_proxies:
+        logger.info(f"مجموعاً {len(all_proxies)} پروکسی از منابع آنلاین دریافت شد")
+        # اختلاط پروکسی‌ها
+        random.shuffle(all_proxies)
+        # حداکثر 100 پروکسی را برمی‌گردانیم برای جلوگیری از کندی
+        return all_proxies[:100]
     
     # اگر نتوانستیم پروکسی دریافت کنیم، از لیست پیش‌فرض استفاده می‌کنیم
     logger.info(f"استفاده از {len(DEFAULT_PROXIES)} پروکسی پیش‌فرض")
