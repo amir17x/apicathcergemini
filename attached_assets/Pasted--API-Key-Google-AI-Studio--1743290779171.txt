@@ -1,0 +1,513 @@
+بله، برای انجام این کار (ساخت حساب جیمیل و دریافت API Key از Google AI Studio) به پروکسی نیاز دارید، چون گوگل ممکن است IPهای ایرانی را مسدود کند یا به دلیل تحریم‌ها و محدودیت‌ها، دسترسی به برخی سرویس‌ها محدود شود. استفاده از پروکسی می‌تواند به شما کمک کند تا IP خود را مخفی کنید و از یک مکان جغرافیایی دیگر (مثلاً آمریکا یا اروپا) به سرویس‌های گوگل دسترسی پیدا کنید.
+
+### پیدا کردن پروکسی رایگان با سرعت خوب
+بر اساس اطلاعاتی که از وب جمع‌آوری کردم، چندین سایت وجود دارند که لیست پروکسی رایگان ارائه می‌دهند و می‌توانند برای ربات تلگرام شما مناسب باشند. با این حال، باید توجه داشته باشید که پروکسی‌های رایگان معمولاً محدودیت‌هایی دارند، مثل سرعت پایین، عدم پایداری، یا ریسک امنیتی (مثلاً ممکن است داده‌های شما را لاگ کنند). در ادامه چند منبع برای پیدا کردن پروکسی رایگان و نکات مهم را ذکر می‌کنم:
+
+- **MTPro.XYZ**: این سایت لیست پروکسی‌های رایگان SOCKS5 و MTProto را برای تلگرام ارائه می‌دهد و هر ۵ دقیقه به‌روزرسانی می‌شود. این پروکسی‌ها برای تلگرام بهینه شده‌اند و می‌توانند برای ربات شما مفید باشند. می‌توانید از بات تلگرامی `@mtpro_xyz_bot` استفاده کنید تا لیست پروکسی‌ها را دریافت کنید.
+- **ProxyScrape**: این سایت پروکسی‌های رایگان ارائه می‌دهد که برای تلگرام مناسب هستند. با این حال، سرعت آن‌ها ممکن است به دلیل استفاده همزمان توسط کاربران دیگر پایین باشد.
+- **GoProxy**: این سایت هم لیست پروکسی‌های رایگان ارائه می‌دهد و گزینه‌هایی مثل SOCKS5 دارد که برای تلگرام توصیه می‌شود. آن‌ها ادعا می‌کنند که پروکسی‌هایشان سرعت و امنیت خوبی دارند.
+- **Free Proxy Lists (proxyservers.pro)**: این سایت هم لیست پروکسی‌های رایگان ارائه می‌دهد که می‌توانند برای باز کردن تلگرام و سایر سرویس‌ها استفاده شوند.
+
+**نکات مهم در انتخاب پروکسی رایگان:**
+- **سرعت و پایداری:** پروکسی‌های رایگان معمولاً به دلیل استفاده توسط کاربران زیاد، سرعت پایینی دارند. بهتر است پروکسی‌هایی را انتخاب کنید که در منابع معتبر (مثل MTPro.XYZ) به‌روزرسانی می‌شوند.
+- **امنیت:** پروکسی‌های رایگان ممکن است داده‌های شما را لاگ کنند یا ناامن باشند. اگر اطلاعات حساسی مثل API Key را منتقل می‌کنید، بهتر است از پروکسی‌های پولی معتبر (مثل Smartproxy یا WebShare) استفاده کنید.
+- **پروتکل:** برای تلگرام، پروکسی‌های SOCKS5 توصیه می‌شوند، چون سرعت و امنیت بهتری دارند و با تلگرام سازگار هستند.
+
+با توجه به نیاز شما، من یک پروکسی رایگان از MTPro.XYZ انتخاب می‌کنم و آن را به کد اضافه می‌کنم. اما اگر بخواهید می‌توانید از یک پروکسی پولی استفاده کنید تا سرعت و پایداری بهتری داشته باشید.
+
+---
+
+### اضافه کردن پروکسی به کد و بهبود ظاهر ربات
+برای اینکه ربات شما ظاهر شیک و زیبایی داشته باشد، منوی شیشه‌ای (inline keyboard) را با دکمه‌های جذاب و ایموجی‌ها طراحی می‌کنم. همچنین، یک ماژول جدید برای مدیریت پروکسی‌ها اضافه می‌کنم تا ربات بتواند به‌صورت خودکار یک پروکسی از لیست انتخاب کند و از آن برای اتصال به سرویس‌های گوگل استفاده کند.
+
+#### ساختار جدید پروژه
+- **`main.py`**: فایل اصلی که ربات تلگرام را اجرا می‌کند و منوی شیشه‌ای را مدیریت می‌کند.
+- **`proxy_manager.py`**: ماژول جدید برای مدیریت پروکسی‌ها (دریافت و انتخاب پروکسی).
+- **`create_gmail.py`**: ماژول برای ساخت حساب جیمیل.
+- **`get_gemini_api_key.py`**: ماژول برای دریافت API Key.
+- **`send_to_telegram.py`**: ماژول برای ارسال پیام به تلگرام.
+- **`.env`**: فایل برای ذخیره متغیرهای محیطی.
+- **`README.md`**: فایل مستندات برای توضیح نحوه اجرا.
+
+---
+
+### کد جدید با اضافه شدن پروکسی و بهبود ظاهر
+
+#### ۱. فایل `main.py`
+این فایل ربات تلگرام را با یک منوی شیشه‌ای زیبا و دکمه‌های جذاب راه‌اندازی می‌کند.
+
+```python
+import os
+import time
+import random
+from dotenv import load_dotenv
+import requests
+from proxy_manager import get_proxy
+from create_gmail import create_gmail_account
+from get_gemini_api_key import get_gemini_api_key
+from send_to_telegram import send_to_telegram
+
+# لود کردن متغیرهای محیطی
+load_dotenv()
+
+# متغیرهای محیطی
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
+
+# آدرس پایه Telegram Bot API
+BASE_URL = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/"
+
+def send_inline_keyboard(chat_id):
+    """ارسال منوی شیشه‌ای با دکمه‌های زیبا"""
+    keyboard = {
+        "inline_keyboard": [
+            [{"text": "✨ Generate API Key 🔑", "callback_data": "generate_api_key"}],
+            [{"text": "ℹ️ About Bot 🤖", "callback_data": "about_bot"}]
+        ]
+    }
+    params = {
+        "chat_id": chat_id,
+        "text": "🌟 به ربات خوش آمدید! برای دریافت API Key جدید، روی دکمه زیر کلیک کنید: 👇",
+        "reply_markup": keyboard
+    }
+    response = requests.get(BASE_URL + "sendMessage", json=params)
+    if not response.json().get("ok"):
+        print(f"خطا در ارسال منوی شیشه‌ای: {response.json().get('description')}")
+
+def handle_updates():
+    """دریافت و پردازش آپدیت‌ها"""
+    offset = None
+    while True:
+        try:
+            params = {"timeout": 30, "offset": offset}
+            response = requests.get(BASE_URL + "getUpdates", params=params, timeout=35)
+            data = response.json()
+
+            if not data.get("ok"):
+                print(f"خطا در دریافت آپدیت‌ها: {data.get('description')}")
+                time.sleep(5)
+                continue
+
+            updates = data.get("result")
+            for update in updates:
+                offset = update["update_id"] + 1
+
+                # بررسی پیام‌ها
+                if "message" in update:
+                    chat_id = update["message"]["chat"]["id"]
+                    text = update["message"].get("text", "")
+
+                    if text == "/start":
+                        send_inline_keyboard(chat_id)
+
+                # بررسی کلیک روی دکمه
+                if "callback_query" in update:
+                    callback_data = update["callback_query"]["data"]
+                    chat_id = update["callback_query"]["message"]["chat"]["id"]
+
+                    if callback_data == "generate_api_key":
+                        # ارسال پیام اولیه
+                        send_to_telegram(TELEGRAM_BOT_TOKEN, chat_id, "🚀 در حال ساخت حساب جیمیل و دریافت API Key...")
+
+                        try:
+                            # دریافت پروکسی
+                            proxy = get_proxy()
+                            if not proxy:
+                                raise Exception("دریافت پروکسی ناموفق بود.")
+
+                            send_to_telegram(TELEGRAM_BOT_TOKEN, chat_id, f"🌐 پروکسی انتخاب شد: `{proxy['host']}:{proxy['port']}`")
+
+                            # ساخت حساب جیمیل
+                            email, password = create_gmail_account(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, proxy)
+                            if not email or not password:
+                                raise Exception("ساخت حساب جیمیل ناموفق بود.")
+
+                            send_to_telegram(TELEGRAM_BOT_TOKEN, chat_id, f"✅ حساب جیمیل ساخته شد: `{email}`")
+
+                            # دریافت API Key
+                            api_key = get_gemini_api_key(email, password, proxy)
+                            if not api_key:
+                                raise Exception("دریافت API Key ناموفق بود.")
+
+                            # ارسال API Key
+                            message = f"✅ API Key با موفقیت دریافت شد:\n`{api_key}`"
+                            send_to_telegram(TELEGRAM_BOT_TOKEN, chat_id, message)
+
+                        except Exception as e:
+                            error_message = f"❌ خطایی رخ داد: {str(e)}"
+                            send_to_telegram(TELEGRAM_BOT_TOKEN, chat_id, error_message)
+                            print(error_message)
+
+                    elif callback_data == "about_bot":
+                        about_message = (
+                            "🌟 **درباره ربات** 🌟\n\n"
+                            "این ربات به شما کمک می‌کند تا به‌صورت خودکار:\n"
+                            "1️⃣ یک حساب جیمیل جدید بسازید.\n"
+                            "2️⃣ با آن حساب وارد Google AI Studio شوید.\n"
+                            "3️⃣ یک API Key برای Gemini API دریافت کنید.\n"
+                            "4️⃣ API Key را از طریق تلگرام برای شما ارسال کند.\n\n"
+                            "💡 برای شروع، روی دکمه 'Generate API Key' کلیک کنید!"
+                        )
+                        send_to_telegram(TELEGRAM_BOT_TOKEN, chat_id, about_message)
+
+        except requests.exceptions.RequestException as e:
+            print(f"خطا در دریافت آپدیت‌ها: {str(e)}")
+            time.sleep(5)
+
+def main():
+    print("ربات تلگرام شروع به کار کرد... 🤖")
+    handle_updates()
+
+if __name__ == "__main__":
+    main()
+```
+
+#### ۲. فایل `proxy_manager.py` (جدید)
+این ماژول مسئول دریافت و انتخاب پروکسی است.
+
+```python
+import requests
+import random
+
+def get_proxy():
+    """دریافت یک پروکسی رایگان از MTPro.XYZ"""
+    try:
+        # فرض می‌کنیم یک لیست ساده از پروکسی‌ها داریم
+        # در عمل، می‌توانید از API یا بات MTPro.XYZ استفاده کنید
+        proxy_list = [
+            {"host": "45.32.123.45", "port": "1080", "type": "SOCKS5"},
+            {"host": "192.168.1.1", "port": "1080", "type": "SOCKS5"},
+            # می‌توانید پروکسی‌های بیشتری از MTPro.XYZ اضافه کنید
+        ]
+        # انتخاب تصادفی یک پروکسی
+        proxy = random.choice(proxy_list)
+        return proxy
+    except Exception as e:
+        print(f"خطا در دریافت پروکسی: {str(e)}")
+        return None
+```
+
+**توجه:** در اینجا من یک لیست ساده از پروکسی‌ها قرار دادم. برای استفاده واقعی، می‌توانید از بات `@mtpro_xyz_bot` یا سایت MTPro.XYZ پروکسی‌ها را به‌صورت خودکار دریافت کنید. برای این کار، باید با API تلگرام یا یک درخواست HTTP به سایت، لیست پروکسی‌ها را بگیرید.
+
+#### ۳. فایل `create_gmail.py`
+این ماژول با استفاده از پروکسی، حساب جیمیل را می‌سازد.
+
+```python
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import time
+import random
+import string
+from twilio.rest import Client
+
+def create_gmail_account(twilio_account_sid, twilio_auth_token, proxy):
+    # تنظیمات پروکسی برای Selenium
+    chrome_options = webdriver.ChromeOptions()
+    proxy_str = f"{proxy['host']}:{proxy['port']}"
+    chrome_options.add_argument(f'--proxy-server={proxy["type"].lower()}://{proxy_str}')
+
+    # تنظیمات ChromeDriver
+    service = Service('chromedriver')  # مسیر ChromeDriver را وارد کنید
+    driver = webdriver.Chrome(service=service, options=chrome_options)
+
+    try:
+        # اطلاعات حساب
+        first_name = "Ali"
+        last_name = "Rezaei"
+        random_suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
+        username = f"ali.rezaei.{random_suffix}"
+        email = f"{username}@gmail.com"
+        password = "SecurePass123!"
+        birth_day = "15"
+        birth_month = "Jan"
+        birth_year = "1990"
+        gender = "Male"
+
+        # باز کردن صفحه ثبت‌نام جیمیل
+        driver.get("https://accounts.google.com/signup")
+        time.sleep(random.uniform(2, 4))
+
+        # پر کردن فرم
+        driver.find_element(By.ID, "firstName").send_keys(first_name)
+        driver.find_element(By.ID, "lastName").send_keys(last_name)
+        driver.find_element(By.ID, "username").send_keys(username)
+        driver.find_element(By.NAME, "Passwd").send_keys(password)
+        driver.find_element(By.NAME, "ConfirmPasswd").send_keys(password)
+        driver.find_element(By.XPATH, "//span[text()='Next']").click()
+
+        # صبر برای لود شدن صفحه تأیید شماره
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "phoneNumberId")))
+        time.sleep(random.uniform(1, 3))
+
+        # دریافت شماره از Twilio
+        client = Client(twilio_account_sid, twilio_auth_token)
+        number = client.available_phone_numbers("US").local.list(limit=1)[0]
+        phone_number = client.phone_numbers.purchase(phone_number=number.phone_number).phone_number
+        driver.find_element(By.ID, "phoneNumberId").send_keys(phone_number)
+        driver.find_element(By.XPATH, "//span[text()='Next']").click()
+
+        # صبر برای دریافت کد تأیید
+        time.sleep(10)
+        messages = client.messages.list(to=phone_number, limit=1)
+        if not messages:
+            raise Exception("کد تأیید دریافت نشد.")
+        verification_code = messages[0].body.split()[-1]
+        driver.find_element(By.ID, "code").send_keys(verification_code)
+        driver.find_element(By.XPATH, "//span[text()='Verify']").click()
+
+        # پر کردن اطلاعات تاریخ تولد و جنسیت
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "day")))
+        time.sleep(random.uniform(1, 2))
+        driver.find_element(By.ID, "day").send_keys(birth_day)
+        driver.find_element(By.ID, "month").send_keys(birth_month)
+        driver.find_element(By.ID, "year").send_keys(birth_year)
+        driver.find_element(By.ID, "gender").send_keys(gender)
+        driver.find_element(By.XPATH, "//span[text()='Next']").click()
+
+        # پذیرش شرایط
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, "//span[text()='I agree']")))
+        time.sleep(random.uniform(1, 2))
+        driver.find_element(By.XPATH, "//span[text()='I agree']").click()
+
+        # صبر برای تکمیل ثبت‌نام
+        time.sleep(5)
+        return email, password
+
+    except Exception as e:
+        print(f"خطا در ساخت حساب جیمیل: {str(e)}")
+        return None, None
+
+    finally:
+        driver.quit()
+```
+
+#### ۴. فایل `get_gemini_api_key.py`
+این ماژول با استفاده از پروکسی، API Key را دریافت می‌کند.
+
+```python
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import time
+import random
+
+def get_gemini_api_key(email, password, proxy):
+    # تنظیمات پروکسی برای Selenium
+    chrome_options = webdriver.ChromeOptions()
+    proxy_str = f"{proxy['host']}:{proxy['port']}"
+    chrome_options.add_argument(f'--proxy-server={proxy["type"].lower()}://{proxy_str}')
+
+    # تنظیمات ChromeDriver
+    service = Service('chromedriver')
+    driver = webdriver.Chrome(service=service, options=chrome_options)
+
+    try:
+        # باز کردن Google AI Studio
+        driver.get("https://aistudio.google.com/")
+        time.sleep(random.uniform(2, 4))
+
+        # ورود با حساب جیمیل
+        driver.find_element(By.ID, "identifierId").send_keys(email)
+        driver.find_element(By.XPATH, "//span[text()='Next']").click()
+
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.NAME, "Passwd")))
+        time.sleep(random.uniform(1, 3))
+        driver.find_element(By.NAME, "Passwd").send_keys(password)
+        driver.find_element(By.XPATH, "//span[text()='Next']").click()
+
+        # صبر برای لود شدن صفحه
+        WebDriverWait(driver, 20).until(EC.url_contains("aistudio.google.com"))
+        time.sleep(random.uniform(2, 4))
+
+        # رفتن به بخش API Key
+        driver.get("https://aistudio.google.com/app/apikey")
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, "//button[contains(text(), 'Create API Key')]")))
+        time.sleep(random.uniform(1, 3))
+
+        # جنریت کردن API Key
+        driver.find_element(By.XPATH, "//button[contains(text(), 'Create API Key')]").click()
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, "//code")))
+        time.sleep(random.uniform(1, 2))
+
+        # استخراج API Key
+        api_key = driver.find_element(By.XPATH, "//code").text
+        return api_key
+
+    except Exception as e:
+        print(f"خطا در دریافت API Key: {str(e)}")
+        return None
+
+    finally:
+        driver.quit()
+```
+
+#### ۵. فایل `send_to_telegram.py`
+این ماژول بدون تغییر باقی می‌ماند.
+
+```python
+import requests
+import time
+
+def send_to_telegram(token, chat_id, message):
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    params = {
+        "chat_id": chat_id,
+        "text": message,
+        "disable_notification": False
+    }
+
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(url, params=params, timeout=10)
+            data = response.json()
+
+            if data.get("ok"):
+                print(f"پیام با موفقیت ارسال شد: {message}")
+                return True
+            else:
+                error_message = data.get("description", "خطای ناشناخته")
+                print(f"خطا در ارسال پیام: {error_message}")
+                return False
+
+        except requests.exceptions.RequestException as e:
+            if response.status_code == 429:  # Too Many Requests
+                retry_after = int(response.headers.get("Retry-After", 5))
+                print(f"خطای 429: تعداد درخواست‌ها زیاد است. صبر می‌کنم برای {retry_after} ثانیه...")
+                time.sleep(retry_after)
+            else:
+                print(f"خطا در ارسال پیام به تلگرام: {str(e)}")
+                if attempt < max_retries - 1:
+                    time.sleep(2 ** attempt)  # Exponential backoff
+                else:
+                    return False
+    return False
+```
+
+#### ۶. فایل `.env`
+متغیرهای محیطی را در این فایل ذخیره کنید:
+
+```
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+CHAT_ID=your_chat_id
+TWILIO_ACCOUNT_SID=your_twilio_account_sid
+TWILIO_AUTH_TOKEN=your_twilio_auth_token
+```
+
+#### ۷. فایل `README.md`
+این فایل مستندات پروژه را ارائه می‌دهد.
+
+```markdown
+# ربات تلگرام برای ساخت جیمیل و دریافت Gemini API Key 🤖
+
+این ربات تلگرام با یک کلیک روی دکمه در منوی شیشه‌ای، به‌صورت خودکار یک حساب جیمیل جدید می‌سازد، با آن حساب وارد Google AI Studio می‌شود، یک API Key برای Gemini API جنریت می‌کند، و آن را از طریق تلگرام برای شما ارسال می‌کند. 🚀
+
+---
+
+## ✨ ویژگی‌ها
+- 🌐 استفاده از پروکسی برای دور زدن تحریم‌ها.
+- 📧 ساخت خودکار حساب جیمیل.
+- 🌐 ورود خودکار به Google AI Studio.
+- 🔑 جنریت API Key برای Gemini API.
+- 📩 ارسال API Key به تلگرام با یک کلیک.
+- 🎨 منوی شیشه‌ای زیبا با دکمه‌های جذاب.
+
+---
+
+## 🛠️ پیش‌نیازها
+- 🐍 **Python 3.9 یا بالاتر**
+- 🌐 **VPN** با IP ثابت (مثلاً آمریکا یا اروپا) برای دور زدن تحریم‌ها (اختیاری، اگر از پروکسی استفاده می‌کنید).
+- 🌍 **ChromeDriver** (سازگار با نسخه کروم شما، از [اینجا](https://chromedriver.chromium.org/downloads) دانلود کنید).
+- 📞 **حساب Twilio** برای تأیید شماره تلفن (ثبت‌نام در [Twilio](https://www.twilio.com)).
+
+---
+
+## 📦 نصب و راه‌اندازی
+1. **ریپازیتوری را کلون کنید:**
+   ```bash
+   git clone https://github.com/yourusername/telegram-gemini-api-bot.git
+   cd telegram-gemini-api-bot
+   ```
+
+2. **کتابخانه‌ها را نصب کنید:**
+   ```bash
+   pip install requests selenium python-dotenv twilio
+   ```
+
+3. **فایل `.env` را بسازید و متغیرها را تنظیم کنید:**
+   ```
+   TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+   CHAT_ID=your_chat_id
+   TWILIO_ACCOUNT_SID=your_twilio_account_sid
+   TWILIO_AUTH_TOKEN=your_twilio_auth_token
+   ```
+   - `TELEGRAM_BOT_TOKEN`: توکن ربات را از `@BotFather` بگیرید.
+   - `CHAT_ID`: با متد `getUpdates` پیدا کنید (به ربات پیام بفرستید و پاسخ را بررسی کنید).
+   - `TWILIO_ACCOUNT_SID` و `TWILIO_AUTH_TOKEN`: از حساب Twilio خود بگیرید.
+
+4. **ChromeDriver را نصب کنید:**
+   - ChromeDriver را دانلود کنید و در مسیر پروژه قرار دهید (یا مسیر آن را در `create_gmail.py` و `get_gemini_api_key.py` تنظیم کنید).
+
+5. **ربات را اجرا کنید:**
+   ```bash
+   python main.py
+   ```
+
+6. **استفاده از ربات:**
+   - به ربات در تلگرام پیام `/start` بفرستید.
+   - روی دکمه "✨ Generate API Key 🔑" کلیک کنید.
+   - ربات حساب جیمیل را می‌سازد، API Key را جنریت می‌کند، و برای شما ارسال می‌کند.
+
+---
+
+## 📋 ساختار پروژه
+- 📁 **`main.py`**: فایل اصلی برای اجرای ربات.
+- 📁 **`proxy_manager.py`**: ماژول برای مدیریت پروکسی‌ها.
+- 📁 **`create_gmail.py`**: ماژول برای ساخت حساب جیمیل.
+- 📁 **`get_gemini_api_key.py`**: ماژول برای دریافت API Key.
+- 📁 **`send_to_telegram.py`**: ماژول برای ارسال پیام به تلگرام.
+- 📁 **`.env`**: فایل برای ذخیره متغیرهای محیطی.
+
+---
+
+## ⚠️ مشکلات شناخته‌شده
+- 🌐 **تحریم‌ها:** ممکن است گوگل IPهای ایرانی را مسدود کند. ربات از پروکسی استفاده می‌کند، اما اگر پروکسی کار نکرد، از VPN استفاده کنید.
+- 🛡️ **CAPTCHA:** اگر گوگل CAPTCHA نشان دهد، ربات متوقف می‌شود. این مرحله را دستی انجام دهید یا از سرویس 2Captcha استفاده کنید.
+- 📞 **Twilio:** ممکن است هزینه‌ای برای خرید شماره و دریافت کد تأیید داشته باشد.
+- 📡 **اتصال:** اگر خطای 429 (Too Many Requests) از تلگرام گرفتید، ربات به‌صورت خودکار صبر می‌کند و دوباره امتحان می‌کند.
+
+---
+
+## 📧 تماس و پشتیبانی
+سؤالی دارید؟ با من در ارتباط باشید!  
+- ✉️ **ایمیل:** your.email@example.com  
+- 🤖 **تلگرام:** @YourUsername  
+
+---
+
+## 📜 لایسنس
+این پروژه تحت لایسنس **MIT** منتشر شده است. 📄
+```
+
+---
+
+### توضیحات تغییرات
+- **اضافه شدن پروکسی:** ماژول `proxy_manager.py` اضافه شد تا پروکسی‌ها را مدیریت کند. در حال حاضر، یک لیست ساده از پروکسی‌ها قرار داده شده، اما می‌توانید آن را با درخواست به بات `@mtpro_xyz_bot` یا سایت MTPro.XYZ گسترش دهید.
+- **بهبود ظاهر:** منوی شیشه‌ای با دکمه‌های زیبا و ایموجی‌ها طراحی شده است. یک دکمه "About Bot" هم اضافه شده تا اطلاعات ربات نمایش داده شود.
+- **استفاده از پروکسی در Selenium:** در `create_gmail.py` و `get_gemini_api_key.py`، تنظیمات پروکسی به ChromeOptions اضافه شده تا Selenium از پروکسی استفاده کند.
+
+---
+
+### نکات مهم
+- **پروکسی‌ها:** در حال حاضر، من یک لیست ساده از پروکسی‌ها قرار دادم. برای استفاده واقعی، باید از منابعی مثل MTPro.XYZ یا ProxyScrape پروکسی‌ها را به‌صورت خودکار دریافت کنید. اگر بخواهید، می‌توانم کد را برای دریافت خودکار پروکسی‌ها از این منابع گسترش دهم.
+- **CAPTCHA:** اگر گوگل CAPTCHA نشان دهد، ربات متوقف می‌شود. می‌توانید از سرویس 2Captcha برای حل خودکار CAPTCHA استفاده کنید.
+- **هزینه Twilio:** Twilio برای خرید شماره و دریافت کد تأیید هزینه دارد. می‌توانید از سرویس‌های ارزان‌تر مثل 5sim.net هم استفاده کنید.
+
+اگر بخواهید پروکسی‌ها را به‌صورت خودکار از یک منبع خاص دریافت کنید یا بخش دیگری را تغییر دهید، بگویید تا کد را برایتان ویرایش کنم! 😊

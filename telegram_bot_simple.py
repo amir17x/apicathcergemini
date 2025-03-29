@@ -36,7 +36,8 @@ class SimpleTelegramBot:
         params = {
             'offset': self.offset,
             'timeout': timeout,
-            'allowed_updates': json.dumps(['message'])  # We only care about messages, no callbacks
+            # We need to accept all update types, especially for commands
+            'allowed_updates': json.dumps(['message', 'edited_message', 'callback_query'])
         }
         try:
             response = requests.get(f"{self.base_url}/getUpdates", params=params)
@@ -367,7 +368,11 @@ class SimpleTelegramBot:
         """Main loop to continuously poll for updates."""
         logger.info("Starting bot polling...")
         logger.info(f"Bot token available and valid: {bool(self.token)}")
-        logger.info(f"Base URL: {self.base_url.replace(self.token, 'TOKEN_HIDDEN')}")
+        # Safely replace token in URL string
+        safe_url = self.base_url
+        if self.token and isinstance(self.token, str):
+            safe_url = safe_url.replace(self.token, 'TOKEN_HIDDEN') 
+        logger.info(f"Base URL: {safe_url}")
         
         # Test API connection to verify token is working
         try:
@@ -380,6 +385,17 @@ class SimpleTelegramBot:
                 logger.error(f"Failed to connect to Telegram API: {test_data.get('description', 'Unknown error')}")
         except Exception as e:
             logger.error(f"Error testing Telegram API connection: {e}")
+        
+        # Immediately clear any pending updates to avoid processing old messages
+        try:
+            logger.info("Clearing any pending updates...")
+            response = requests.get(f"{self.base_url}/getUpdates", params={'offset': -1, 'limit': 1})
+            data = response.json()
+            if data.get('ok') and data.get('result') and len(data['result']) > 0:
+                self.offset = data['result'][0]['update_id'] + 1
+                logger.info(f"Set initial offset to {self.offset}")
+        except Exception as e:
+            logger.error(f"Error clearing pending updates: {e}")
         
         logger.info("Starting main polling loop now...")
         
