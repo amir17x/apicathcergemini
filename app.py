@@ -3,8 +3,8 @@ import logging
 from flask import Flask, render_template, request, jsonify, session
 from flask_sqlalchemy import SQLAlchemy
 import threading
-# Temporarily disable bot import to make web interface work
-# import bot
+# Temporarily disable bot import until we fix the telegram package issues
+# import simple_bot as bot
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, 
@@ -49,9 +49,8 @@ with app.app_context():
 
 # Start the Telegram bot in a separate thread
 def start_bot():
-    # Temporarily disabled
-    # bot.start_polling()
-    logger.info("Bot start_polling is disabled temporarily")
+    result = bot.start_polling()
+    logger.info(f"Bot start result: {result}")
 
 # Routes
 @app.route('/')
@@ -68,8 +67,10 @@ def get_accounts():
     return jsonify([account.to_dict() for account in accounts])
 
 # Start the bot in a separate thread when the application starts
-if not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
-    bot_thread = threading.Thread(target=start_bot)
-    bot_thread.daemon = True
-    bot_thread.start()
-    logger.info("Telegram bot started in background thread")
+# Temporarily disabled while fixing the import issues
+# if not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+#     bot_thread = threading.Thread(target=start_bot)
+#     bot_thread.daemon = True
+#     bot_thread.start()
+#     logger.info("Telegram bot started in background thread")
+logger.info("Telegram bot is temporarily disabled while fixing import issues")

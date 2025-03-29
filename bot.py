@@ -6,7 +6,8 @@ from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandle
 from gmail_creator import create_gmail_account
 from api_key_generator import generate_api_key
 from utils import generate_random_user_info
-from app import db, Account
+# This will be imported at the bottom to avoid circular imports
+# from app import db, Account
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, 
@@ -275,5 +276,6 @@ def start_polling():
     # Start the Bot
     application.run_polling()
 
-# The following import needs to be at the end to avoid circular imports
+# The following imports need to be at the end to avoid circular imports
 from telegram.ext import MessageHandler, filters
+from app import db, Account
