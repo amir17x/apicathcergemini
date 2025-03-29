@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gmail & Gemini API Creator Bot</title>
+    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.css">
+    <link rel="stylesheet" href="/static/css/custom.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i data-feather="mail"></i>
+                Gmail & Gemini API Bot
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/status">Status</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h1 class="card-title text-center mb-4">
+                            <i data-feather="key" class="me-2"></i>
+                            Gmail & Gemini API Creator
+                        </h1>
+                        
+                        <div class="alert alert-info">
+                            <h4 class="alert-heading"><i data-feather="info" class="me-2"></i>How to use</h4>
+                            <p>This bot automatically creates Gmail accounts and generates Google Gemini API keys for you.</p>
+                            <hr>
+                            <p class="mb-0">Start by messaging the bot on Telegram:</p>
+                            <ul class="mt-2">
+                                <li>Use <code>/start</code> to get started</li>
+                                <li>Use <code>/create</code> to create a new Gmail account and API key</li>
+                                <li>Use <code>/status</code> to check the status of your requests</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="card mt-4">
+                            <div class="card-header bg-secondary text-white">
+                                <i data-feather="terminal" class="me-2"></i>
+                                Setup Instructions
+                            </div>
+                            <div class="card-body">
+                                <ol>
+                                    <li>Find the bot on Telegram at: <strong>@YourBotUsername</strong></li>
+                                    <li>Send the <code>/start</code> command to initialize the bot</li>
+                                    <li>Use <code>/create</code> to begin account creation process</li>
+                                    <li>Follow the prompts to specify proxy settings (if needed)</li>
+                                    <li>Wait for the bot to create your account and API key</li>
+                                    <li>Credentials will be sent to you when the process completes</li>
+                                </ol>
+                            </div>
+                        </div>
+                        
+                        <div class="card mt-4">
+                            <div class="card-header bg-primary text-white">
+                                <i data-feather="shield" class="me-2"></i>
+                                Important Notes
+                            </div>
+                            <div class="card-body">
+                                <ul>
+                                    <li>Account creation process may take 3-5 minutes</li>
+                                    <li>You may need a proxy/VPN if in a region with restricted access</li>
+                                    <li>Phone verification may be required by Google (not automated)</li>
+                                    <li>Keep your credentials secure - do not share them!</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="text-center mt-4">
+                            <a href="https://t.me/YourBotUsername" class="btn btn-lg btn-primary" target="_blank">
+                                <i data-feather="message-circle" class="me-2"></i>
+                                Open Telegram Bot
+                            </a>
+                            <a href="/status" class="btn btn-lg btn-secondary ms-2">
+                                <i data-feather="activity" class="me-2"></i>
+                                Check Status
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <footer class="mt-5 py-3 bg-dark text-center text-white">
+        <div class="container">
+            <p class="mb-0">Gmail & Gemini API Creator Bot &copy; 2023</p>
+        </div>
+    </footer>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+    <script>
+        // Initialize Feather Icons
+        document.addEventListener('DOMContentLoaded', function() {
+            feather.replace();
+        });
+    </script>
+</body>
+</html>
