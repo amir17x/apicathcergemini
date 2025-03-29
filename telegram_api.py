@@ -30,9 +30,22 @@ class TelegramBot:
             data = response.json()
             
             if data.get('ok') and data.get('result'):
-                if data['result']:
-                    self.offset = data['result'][-1]['update_id'] + 1
-                return data['result']
+                updates = data['result']
+                
+                # Filter out the problematic callback query that's causing errors
+                filtered_updates = []
+                for update in updates:
+                    if 'callback_query' in update and update['callback_query']['id'] == "7877987201":
+                        logger.info(f"Skipping problematic callback query: {update['callback_query']['id']}")
+                    else:
+                        filtered_updates.append(update)
+                
+                if filtered_updates:
+                    self.offset = filtered_updates[-1]['update_id'] + 1
+                elif updates:  # If we filtered everything but had updates
+                    self.offset = updates[-1]['update_id'] + 1
+                
+                return filtered_updates
             return []
         except Exception as e:
             logger.error(f"Error getting updates: {e}")
@@ -418,9 +431,9 @@ class TelegramBot:
     def process_account_creation(self, chat_id, user_id, proxy=None):
         """Process the account creation and API key generation"""
         from utils import generate_random_user_info
+        import gmail_creator
+        import api_key_generator
         import datetime
-        import time
-        import random
         
         # Generate random user info for the account
         user_info = generate_random_user_info()
@@ -441,14 +454,37 @@ class TelegramBot:
         status_message_id = response['result']['message_id']
         
         try:
-            # Generate a random Gmail address from the user info
-            gmail = f"{user_info['username']}@gmail.com"
+            # Step 1: Create Gmail account using the gmail_creator module
+            logger.info(f"Starting Gmail account creation for user {user_id}")
             
-            # Step 1: Simulate Gmail account creation (for testing button functionality)
-            time.sleep(2)  # Simulate some processing time
+            gmail_result = gmail_creator.create_gmail_account(
+                first_name=user_info['first_name'],
+                last_name=user_info['last_name'],
+                username=user_info['username'],
+                password=user_info['password'],
+                birth_day=user_info['birth_day'],
+                birth_month=user_info['birth_month'],
+                birth_year=user_info['birth_year'],
+                gender=user_info['gender'],
+                proxy=proxy
+            )
             
-            # Simulate the result of Gmail creation
-            # For testing purposes, we'll make it successful
+            # Check Gmail creation result
+            if not gmail_result['success']:
+                self.update_message(
+                    chat_id, 
+                    status_message_id,
+                    f"❌ <b>خطا در ساخت حساب Gmail</b>\n\n"
+                    f"پیام خطا: {gmail_result.get('error', 'خطای نامشخص')}\n\n"
+                    f"لطفاً دوباره تلاش کنید یا از پروکسی استفاده کنید.",
+                    reply_markup=inline_keyboard
+                )
+                return
+            
+            # Gmail creation successful
+            gmail = gmail_result['gmail']
+            
+            # Update status message
             self.update_message(
                 chat_id,
                 status_message_id,
@@ -457,23 +493,51 @@ class TelegramBot:
                 f"⏳ <b>در حال دریافت کلید API Gemini...</b>"
             )
             
-            # Step 2: Simulate API key generation
-            time.sleep(2)  # Simulate some processing time
+            # Step 2: Generate API key using the api_key_generator module
+            logger.info(f"Starting API key generation for {gmail}")
             
-            # Generate a fake API key for testing
-            api_key = 'AIzaSy' + ''.join(random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789', k=40))
+            api_result = api_key_generator.generate_api_key(
+                gmail=gmail,
+                password=user_info['password'],
+                proxy=proxy
+            )
             
             # Get current date and time for record
             current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            
-            # Log success
-            logger.info(f"Test account created successfully: {gmail}")
             
             # Initialize accounts list if not exists
             if 'accounts' not in self.user_data[user_id]:
                 self.user_data[user_id]['accounts'] = []
             
-            # Save test account info
+            # Check API key generation result
+            if not api_result['success']:
+                # API key generation failed, but Gmail account was created
+                self.update_message(
+                    chat_id,
+                    status_message_id,
+                    f"⚠️ <b>ساخت حساب ناقص</b>\n\n"
+                    f"✅ <b>حساب Gmail:</b> <code>{gmail}</code>\n"
+                    f"🔒 <b>رمز عبور:</b> <code>{user_info['password']}</code>\n\n"
+                    f"❌ <b>خطا در دریافت کلید API:</b>\n"
+                    f"{api_result.get('error', 'خطای نامشخص')}\n\n"
+                    f"می‌توانید بعداً به صورت دستی کلید API را دریافت کنید.",
+                    reply_markup=inline_keyboard
+                )
+                
+                # Save account info without API key
+                self.user_data[user_id]['accounts'].append({
+                    'gmail': gmail,
+                    'password': user_info['password'],
+                    'api_key': None,
+                    'status': 'api_failed',
+                    'created_at': current_time
+                })
+                return
+            
+            # Both Gmail and API key creation successful
+            api_key = api_result['api_key']
+            
+            # Save complete account info
             self.user_data[user_id]['accounts'].append({
                 'gmail': gmail,
                 'password': user_info['password'],
@@ -494,8 +558,8 @@ class TelegramBot:
                 reply_markup=inline_keyboard
             )
             
-            # Success message
-            logger.info(f"Successfully created test account and API key for user {user_id}")
+            # Log success
+            logger.info(f"Successfully created account and API key for user {user_id}: {gmail}")
             
         except Exception as e:
             logger.error(f"Error in account creation process: {str(e)}")
