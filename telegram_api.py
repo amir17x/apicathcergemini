@@ -75,11 +75,20 @@ class TelegramBot:
             response = requests.post(f"{self.base_url}/editMessageText", data=params)
             result = response.json()
             if not result.get('ok'):
-                logger.warning(f"Failed to update message: {result.get('description')}")
+                # If update fails, try to send a new message with the same content instead
+                if "message to edit not found" in str(result.get('description', '')).lower():
+                    logger.warning("Message to edit not found, sending as new message instead")
+                    return self.send_message(chat_id, text, reply_markup=reply_markup)
+                else:
+                    logger.warning(f"Failed to update message: {result.get('description')}")
             return result
         except Exception as e:
             logger.error(f"Error updating message: {e}")
-            return None
+            # Try to send a new message if updating fails
+            try:
+                return self.send_message(chat_id, text, reply_markup=reply_markup)
+            except:
+                return None
 
     def handle_updates(self, updates):
         """Process updates and dispatch to handlers"""
@@ -125,14 +134,20 @@ class TelegramBot:
         chat_id = message['chat']['id']
         user_id = query['from']['id']
         callback_data = query['data']
+        callback_id = query['id']
         
         try:
             # Initialize user data if not exists
             if user_id not in self.user_data:
                 self.user_data[user_id] = {'chat_id': chat_id}
-                
-            # Answer the callback query to stop the loading animation
-            self.answer_callback_query(query['id'])
+            
+            # First try to silently acknowledge the callback query without showing an alert
+            try:
+                self.answer_callback_query(callback_id)
+            except Exception as e:
+                # If there's an error answering the callback query, log it but continue processing
+                # This is likely due to the query being too old, which is non-critical
+                logger.warning(f"Non-critical error answering callback query: {str(e)}")
             
             # Process different callback data
             if callback_data == 'start':
@@ -157,11 +172,11 @@ class TelegramBot:
             
             elif callback_data == 'custom_proxy':
                 # Ask for custom proxy
-                message = "🌐 <b>تنظیم پروکسی دلخواه</b>\n\n"
-                message += "لطفاً پروکسی خود را در قالب زیر وارد کنید:\n"
-                message += "<code>protocol://username:password@host:port</code>\n\n"
-                message += "مثال:\n"
-                message += "<code>socks5://user:pass@1.2.3.4:1080</code>"
+                proxy_msg = "🌐 <b>تنظیم پروکسی دلخواه</b>\n\n"
+                proxy_msg += "لطفاً پروکسی خود را در قالب زیر وارد کنید:\n"
+                proxy_msg += "<code>protocol://username:password@host:port</code>\n\n"
+                proxy_msg += "مثال:\n"
+                proxy_msg += "<code>socks5://user:pass@1.2.3.4:1080</code>"
                 
                 # Create cancel button
                 inline_keyboard = {
@@ -170,15 +185,19 @@ class TelegramBot:
                     ]
                 }
                 
-                self.send_message(chat_id, message, reply_markup=inline_keyboard)
+                self.send_message(chat_id, proxy_msg, reply_markup=inline_keyboard)
                 self.user_data[user_id]['state'] = 'custom_proxy'
             
             else:
                 logger.warning(f"Unknown callback data: {callback_data}")
                 
         except Exception as e:
-            logger.error(f"Error handling callback query: {e}")
-            self.send_message(chat_id, f"خطا در پردازش درخواست: {str(e)}")
+            logger.error(f"Error handling callback query: {str(e)}")
+            try:
+                # Try to send an error message, but don't let this fail the whole handler
+                self.send_message(chat_id, f"خطا در پردازش درخواست. لطفاً دوباره تلاش کنید.")
+            except:
+                pass
     
     def answer_callback_query(self, callback_query_id, text=None, show_alert=False):
         """Answer a callback query to stop the loading animation"""
