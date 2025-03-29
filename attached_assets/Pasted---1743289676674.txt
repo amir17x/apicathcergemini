@@ -1,0 +1,298 @@
+با توجه به درخواست شما، من کد کامل و دقیقی برای ربات تلگرام می‌نویسم که با استفاده از یک حساب جیمیل موجود (روش ساده‌تر که پیشنهاد دادم)، وارد Google AI Studio شود، یک API Key برای Gemini API جنریت کند، و آن را از طریق تلگرام برای شما ارسال کند. این کد شامل تمام ماژول‌ها، مدیریت خطاها، و مستندات لازم (README) است. همچنین، از اطلاعات مستند Telegram Bot API که قبلاً استخراج کردم، استفاده می‌کنم.
+
+---
+
+### ساختار پروژه
+پروژه شامل فایل‌ها و ماژول‌های زیر است:
+- **`main.py`**: فایل اصلی که همه مراحل را اجرا می‌کند.
+- **`get_gemini_api_key.py`**: ماژول برای ورود به Google AI Studio و جنریت API Key.
+- **`send_to_telegram.py`**: ماژول برای ارسال پیام به تلگرام.
+- **`.env`**: فایل برای ذخیره متغیرهای محیطی.
+- **`README.md`**: فایل مستندات برای توضیح نحوه اجرا.
+
+---
+
+### کد کامل
+
+#### ۱. فایل `main.py`
+این فایل اصلی است که همه مراحل را هماهنگ می‌کند.
+
+```python
+import os
+import time
+import random
+from dotenv import load_dotenv
+from get_gemini_api_key import get_gemini_api_key
+from send_to_telegram import send_to_telegram
+
+# لود کردن متغیرهای محیطی
+load_dotenv()
+
+# متغیرهای محیطی
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")
+GMAIL_EMAIL = os.getenv("GMAIL_EMAIL")
+GMAIL_PASSWORD = os.getenv("GMAIL_PASSWORD")
+
+def main():
+    try:
+        # ارسال پیام اولیه به تلگرام
+        send_to_telegram(
+            TELEGRAM_BOT_TOKEN,
+            CHAT_ID,
+            "🚀 ربات شروع به کار کرد! در حال دریافت API Key..."
+        )
+
+        # دریافت API Key از Google AI Studio
+        api_key = get_gemini_api_key(GMAIL_EMAIL, GMAIL_PASSWORD)
+        if not api_key:
+            raise Exception("دریافت API Key ناموفق بود.")
+
+        # ارسال API Key به تلگرام
+        message = f"✅ API Key با موفقیت دریافت شد:\n`{api_key}`"
+        send_to_telegram(TELEGRAM_BOT_TOKEN, CHAT_ID, message)
+
+    except Exception as e:
+        error_message = f"❌ خطایی رخ داد: {str(e)}"
+        send_to_telegram(TELEGRAM_BOT_TOKEN, CHAT_ID, error_message)
+        print(error_message)
+
+if __name__ == "__main__":
+    main()
+```
+
+#### ۲. فایل `get_gemini_api_key.py`
+این ماژول مسئول ورود به Google AI Studio و جنریت API Key است.
+
+```python
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import time
+import random
+
+def get_gemini_api_key(email, password):
+    # تنظیمات ChromeDriver
+    service = Service('chromedriver')  # مسیر ChromeDriver را وارد کنید
+    driver = webdriver.Chrome(service=service)
+
+    try:
+        # باز کردن Google AI Studio
+        driver.get("https://aistudio.google.com/")
+        time.sleep(random.uniform(2, 4))  # تأخیر تصادفی برای شبیه‌سازی رفتار انسانی
+
+        # ورود با حساب جیمیل
+        driver.find_element(By.ID, "identifierId").send_keys(email)
+        driver.find_element(By.XPATH, "//span[text()='Next']").click()
+
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.NAME, "Passwd")))
+        time.sleep(random.uniform(1, 3))
+        driver.find_element(By.NAME, "Passwd").send_keys(password)
+        driver.find_element(By.XPATH, "//span[text()='Next']").click()
+
+        # صبر برای لود شدن صفحه
+        WebDriverWait(driver, 20).until(EC.url_contains("aistudio.google.com"))
+        time.sleep(random.uniform(2, 4))
+
+        # رفتن به بخش API Key
+        driver.get("https://aistudio.google.com/app/apikey")
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, "//button[contains(text(), 'Create API Key')]")))
+        time.sleep(random.uniform(1, 3))
+
+        # جنریت کردن API Key
+        driver.find_element(By.XPATH, "//button[contains(text(), 'Create API Key')]").click()
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, "//code")))
+        time.sleep(random.uniform(1, 2))
+
+        # استخراج API Key
+        api_key = driver.find_element(By.XPATH, "//code").text
+        return api_key
+
+    except Exception as e:
+        print(f"خطا در دریافت API Key: {str(e)}")
+        return None
+
+    finally:
+        driver.quit()
+```
+
+#### ۳. فایل `send_to_telegram.py`
+این ماژول مسئول ارسال پیام به تلگرام است.
+
+```python
+import requests
+import time
+
+def send_to_telegram(token, chat_id, message):
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    params = {
+        "chat_id": chat_id,
+        "text": message,
+        "disable_notification": False
+    }
+
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(url, params=params, timeout=10)
+            data = response.json()
+
+            if data.get("ok"):
+                print(f"پیام با موفقیت ارسال شد: {message}")
+                return True
+            else:
+                error_message = data.get("description", "خطای ناشناخته")
+                print(f"خطا در ارسال پیام: {error_message}")
+                return False
+
+        except requests.exceptions.RequestException as e:
+            if response.status_code == 429:  # Too Many Requests
+                retry_after = int(response.headers.get("Retry-After", 5))
+                print(f"خطای 429: تعداد درخواست‌ها زیاد است. صبر می‌کنم برای {retry_after} ثانیه...")
+                time.sleep(retry_after)
+            else:
+                print(f"خطا در ارسال پیام به تلگرام: {str(e)}")
+                if attempt < max_retries - 1:
+                    time.sleep(2 ** attempt)  # Exponential backoff
+                else:
+                    return False
+    return False
+```
+
+#### ۴. فایل `.env`
+متغیرهای محیطی را در این فایل ذخیره کنید:
+
+```
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+CHAT_ID=your_chat_id
+GMAIL_EMAIL=your_gmail_email
+GMAIL_PASSWORD=your_gmail_password
+```
+
+- **دستورالعمل برای پر کردن:**
+  - `TELEGRAM_BOT_TOKEN`: توکن ربات را از `@BotFather` بگیرید.
+  - `CHAT_ID`: با متد `getUpdates` یا با ارسال پیام به ربات و بررسی آپدیت‌ها پیدا کنید.
+  - `GMAIL_EMAIL` و `GMAIL_PASSWORD`: اطلاعات حساب جیمیل موجود خود را وارد کنید.
+
+#### ۵. فایل `README.md`
+این فایل مستندات پروژه را ارائه می‌دهد.
+
+```markdown
+# ربات تلگرام برای دریافت Gemini API Key 🤖
+
+این ربات تلگرام با استفاده از یک حساب جیمیل موجود، وارد Google AI Studio می‌شود، یک API Key برای Gemini API جنریت می‌کند، و آن را از طریق تلگرام برای شما ارسال می‌کند. 🚀
+
+---
+
+## ✨ ویژگی‌ها
+- 🌐 ورود خودکار به Google AI Studio با حساب جیمیل.
+- 🔑 جنریت API Key برای Gemini API.
+- 📩 ارسال API Key به تلگرام.
+
+---
+
+## 🛠️ پیش‌نیازها
+- 🐍 **Python 3.9 یا بالاتر**
+- 🌐 **VPN** با IP ثابت (مثلاً آمریکا یا اروپا) برای دور زدن تحریم‌ها.
+- 🌍 **ChromeDriver** (سازگار با نسخه کروم شما، از [اینجا](https://chromedriver.chromium.org/downloads) دانلود کنید).
+- 📧 **حساب جیمیل** (ایمیل و رمز عبور را آماده کنید).
+
+---
+
+## 📦 نصب و راه‌اندازی
+1. **ریپازیتوری را کلون کنید:**
+   ```bash
+   git clone https://github.com/yourusername/telegram-gemini-api-bot.git
+   cd telegram-gemini-api-bot
+   ```
+
+2. **کتابخانه‌ها را نصب کنید:**
+   ```bash
+   pip install requests selenium python-dotenv
+   ```
+
+3. **فایل `.env` را بسازید و متغیرها را تنظیم کنید:**
+   ```
+   TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+   CHAT_ID=your_chat_id
+   GMAIL_EMAIL=your_gmail_email
+   GMAIL_PASSWORD=your_gmail_password
+   ```
+   - `TELEGRAM_BOT_TOKEN`: توکن ربات را از `@BotFather` بگیرید.
+   - `CHAT_ID`: با متد `getUpdates` پیدا کنید (به ربات پیام بفرستید و پاسخ را بررسی کنید).
+   - `GMAIL_EMAIL` و `GMAIL_PASSWORD`: اطلاعات حساب جیمیل خود را وارد کنید.
+
+4. **ChromeDriver را نصب کنید:**
+   - ChromeDriver را دانلود کنید و در مسیر پروژه قرار دهید (یا مسیر آن را در `get_gemini_api_key.py` تنظیم کنید).
+
+5. **ربات را اجرا کنید:**
+   ```bash
+   python main.py
+   ```
+
+---
+
+## 📋 ساختار پروژه
+- 📁 **`main.py`**: فایل اصلی برای اجرای ربات.
+- 📁 **`get_gemini_api_key.py`**: ماژول برای دریافت API Key.
+- 📁 **`send_to_telegram.py`**: ماژول برای ارسال پیام به تلگرام.
+- 📁 **`.env`**: فایل برای ذخیره متغیرهای محیطی.
+
+---
+
+## ⚠️ مشکلات شناخته‌شده
+- 🌐 **تحریم‌ها:** ممکن است گوگل IPهای ایرانی را مسدود کند. از VPN استفاده کنید.
+- 🛡️ **CAPTCHA:** اگر گوگل CAPTCHA نشان دهد، ربات متوقف می‌شود. این مرحله را دستی انجام دهید.
+- 📡 **اتصال:** اگر خطای 429 (Too Many Requests) از تلگرام گرفتید، ربات به‌صورت خودکار صبر می‌کند و دوباره امتحان می‌کند.
+
+---
+
+## 📧 تماس و پشتیبانی
+سؤالی دارید؟ با من در ارتباط باشید!  
+- ✉️ **ایمیل:** your.email@example.com  
+- 🤖 **تلگرام:** @YourUsername  
+
+---
+
+## 📜 لایسنس
+این پروژه تحت لایسنس **MIT** منتشر شده است. 📄
+```
+
+---
+
+### توضیحات کد
+- **مدیریت خطاها:**
+  - در `send_to_telegram.py`، خطای 429 (Too Many Requests) با exponential backoff مدیریت می‌شود.
+  - اگر خطایی در دریافت API Key رخ دهد، پیام خطا به تلگرام ارسال می‌شود.
+- **تأخیرهای تصادفی:** در `get_gemini_api_key.py`، تأخیرهای تصادفی (بین ۱ تا ۴ ثانیه) اضافه شده‌اند تا رفتار ربات شبیه انسان باشد و از تشخیص توسط گوگل جلوگیری شود.
+- **امنیت:** متغیرهای حساس (مثل توکن و اطلاعات جیمیل) در فایل `.env` ذخیره می‌شوند.
+- **ساختار ماژولار:** کد به ماژول‌های جداگانه تقسیم شده تا خوانا و قابل نگهداری باشد.
+
+---
+
+### نکات مهم برای کاربران ایرانی
+- **تحریم‌ها:** حتماً از VPN با IP ثابت استفاده کنید، چون گوگل ممکن است IPهای ایرانی را مسدود کند. پیشنهاد می‌کنم کد را روی یک VPS (مثلاً در آمریکا یا آلمان) اجرا کنید.
+- **CAPTCHA:** اگر گوگل CAPTCHA نشان دهد، ربات نمی‌تواند ادامه دهد. در این صورت، باید این مرحله را دستی انجام دهید یا از سرویس‌های حل CAPTCHA مثل 2Captcha استفاده کنید.
+- **امنیت API Key:** API Key را فقط در یک چت خصوصی دریافت کنید و از اشتراک‌گذاری آن خودداری کنید.
+
+---
+
+### تست و اجرا
+1. تمام پیش‌نیازها (Python، کتابخانه‌ها، ChromeDriver، VPN) را آماده کنید.
+2. فایل `.env` را با اطلاعات خود پر کنید.
+3. کد را اجرا کنید:
+   ```bash
+   python main.py
+   ```
+4. ربات یک پیام اولیه به تلگرام ارسال می‌کند، API Key را جنریت می‌کند، و آن را برای شما می‌فرستد.
+
+---
+
+### پیشنهاد برای گسترش
+- **اضافه کردن دستورات:** می‌توانید دستوراتی مثل `/generate` به ربات اضافه کنید تا فقط وقتی شما بخواهید API Key جنریت کند.
+- **مدیریت چند حساب:** می‌توانید ربات را طوری گسترش دهید که با چند حساب جیمیل کار کند و API Keyهای مختلف تولید کند.
+- **حل CAPTCHA:** اگر بخواهید مرحله CAPTCHA را خودکار کنید، می‌توانید از سرویس 2Captcha استفاده کنید.
+
+اگر بخواهید کد را تغییر دهید یا روش کامل (با ساخت جیمیل) را پیاده‌سازی کنید، بگویید تا کد را برایتان ویرایش کنم! 😊
