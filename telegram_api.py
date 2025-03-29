@@ -79,6 +79,7 @@ class TelegramBot:
         """Process updates and dispatch to handlers"""
         for update in updates:
             try:
+                # Handle regular messages
                 if 'message' in update:
                     message = update['message']
                     chat_id = message['chat']['id']
@@ -103,33 +104,142 @@ class TelegramBot:
                         else:
                             # Regular text message
                             self.handle_text_message(update)
+                
+                # Handle callback queries (from inline keyboard buttons)
+                elif 'callback_query' in update:
+                    self.handle_callback_query(update)
                             
             except Exception as e:
                 logger.error(f"Error handling update: {e}")
+                
+    def handle_callback_query(self, update):
+        """Handle callback queries from inline keyboard buttons"""
+        query = update['callback_query']
+        message = query['message']
+        chat_id = message['chat']['id']
+        user_id = query['from']['id']
+        callback_data = query['data']
+        
+        try:
+            # Initialize user data if not exists
+            if user_id not in self.user_data:
+                self.user_data[user_id] = {'chat_id': chat_id}
+                
+            # Answer the callback query to stop the loading animation
+            self.answer_callback_query(query['id'])
+            
+            # Process different callback data
+            if callback_data == 'start':
+                # Show main menu
+                self.handle_start({'message': message}, [])
+            
+            elif callback_data == 'help':
+                # Show help message
+                self.handle_help({'message': message}, [])
+            
+            elif callback_data == 'create':
+                # Start account creation process
+                self.handle_create({'message': message}, [])
+            
+            elif callback_data == 'status':
+                # Show account status
+                self._show_status(chat_id, user_id)
+            
+            elif callback_data == 'no_proxy':
+                # Start account creation without proxy
+                self.process_account_creation(chat_id, user_id)
+            
+            elif callback_data == 'custom_proxy':
+                # Ask for custom proxy
+                message = "🌐 <b>تنظیم پروکسی دلخواه</b>\n\n"
+                message += "لطفاً پروکسی خود را در قالب زیر وارد کنید:\n"
+                message += "<code>protocol://username:password@host:port</code>\n\n"
+                message += "مثال:\n"
+                message += "<code>socks5://user:pass@1.2.3.4:1080</code>"
+                
+                # Create cancel button
+                inline_keyboard = {
+                    "inline_keyboard": [
+                        [{"text": "🔙 بازگشت", "callback_data": "create"}]
+                    ]
+                }
+                
+                self.send_message(chat_id, message, reply_markup=inline_keyboard)
+                self.user_data[user_id]['state'] = 'custom_proxy'
+            
+            else:
+                logger.warning(f"Unknown callback data: {callback_data}")
+                
+        except Exception as e:
+            logger.error(f"Error handling callback query: {e}")
+            self.send_message(chat_id, f"خطا در پردازش درخواست: {str(e)}")
+    
+    def answer_callback_query(self, callback_query_id, text=None, show_alert=False):
+        """Answer a callback query to stop the loading animation"""
+        params = {
+            'callback_query_id': callback_query_id
+        }
+        
+        if text:
+            params['text'] = text
+            
+        if show_alert:
+            params['show_alert'] = True
+            
+        try:
+            response = requests.post(f"{self.base_url}/answerCallbackQuery", json=params)
+            return response.json()
+        except Exception as e:
+            logger.error(f"Error answering callback query: {e}")
+            return None
     
     def handle_start(self, update, args):
         """Handle /start command"""
         chat_id = update['message']['chat']['id']
+        
+        # Create inline keyboard buttons
+        inline_keyboard = {
+            "inline_keyboard": [
+                [{"text": "🔧 ساخت حساب جدید", "callback_data": "create"}],
+                [{"text": "📊 وضعیت درخواست‌ها", "callback_data": "status"}],
+                [{"text": "❓ راهنما", "callback_data": "help"}]
+            ]
+        }
+        
         self.send_message(
             chat_id,
-            "سلام! من ربات ساخت حساب Gmail و کلید API Gemini هستم.\n"
-            "از دستورات زیر می‌توانید استفاده کنید:\n"
-            "/help - راهنمای دستورات\n"
-            "/create - ساخت حساب جدید\n"
-            "/status - بررسی وضعیت درخواست‌ها"
+            "👋 سلام! به ربات ساخت حساب Gmail و کلید API Gemini خوش آمدید.\n\n"
+            "🔸 با این ربات می‌توانید به صورت خودکار:\n"
+            "  • حساب Gmail ایجاد کنید\n"
+            "  • کلید API Gemini دریافت کنید\n\n"
+            "از منوی زیر گزینه مورد نظر خود را انتخاب کنید:",
+            reply_markup=inline_keyboard
         )
     
     def handle_help(self, update, args):
         """Handle /help command"""
         chat_id = update['message']['chat']['id']
+        
+        # Create inline keyboard buttons for navigation
+        inline_keyboard = {
+            "inline_keyboard": [
+                [{"text": "🔙 بازگشت به منوی اصلی", "callback_data": "start"}]
+            ]
+        }
+        
         self.send_message(
             chat_id,
-            "دستورات موجود:\n"
-            "/start - شروع کار با ربات\n"
+            "📚 <b>راهنمای استفاده از ربات</b>\n\n"
+            "🔸 <b>دستورات اصلی:</b>\n"
+            "/start - شروع کار با ربات و نمایش منوی اصلی\n"
             "/create - شروع فرآیند ساخت حساب Gmail و کلید API\n"
             "/status - بررسی وضعیت درخواست‌های شما\n"
             "/help - نمایش این راهنما\n\n"
-            "توجه: ممکن است برای ساخت موفق حساب به پروکسی/VPN نیاز داشته باشید."
+            "🔸 <b>نکات مهم:</b>\n"
+            "• ممکن است برای ساخت موفق حساب به پروکسی یا VPN نیاز داشته باشید.\n"
+            "• تمام اطلاعات حساب‌های ساخته شده را در جای امنی ذخیره کنید.\n"
+            "• در صورت بروز مشکل، می‌توانید مجدداً تلاش کنید.",
+            reply_markup=inline_keyboard
         )
     
     def handle_create(self, update, args):
@@ -140,45 +250,71 @@ class TelegramBot:
         # Set the user's state to waiting for proxy choice
         self.user_data[user_id]['state'] = 'proxy_choice'
         
-        keyboard = {
-            "keyboard": [
-                ["بدون پروکسی"],
-                ["استفاده از پروکسی دلخواه"]
-            ],
-            "one_time_keyboard": True,
-            "resize_keyboard": True
+        # Create inline keyboard buttons
+        inline_keyboard = {
+            "inline_keyboard": [
+                [{"text": "🔄 بدون پروکسی", "callback_data": "no_proxy"}],
+                [{"text": "🌐 استفاده از پروکسی", "callback_data": "custom_proxy"}],
+                [{"text": "🔙 بازگشت به منوی اصلی", "callback_data": "start"}]
+            ]
         }
         
         self.send_message(
             chat_id,
-            "آیا می‌خواهید از پروکسی استفاده کنید؟",
-            reply_markup=keyboard
+            "🌐 <b>انتخاب پروکسی</b>\n\n"
+            "برای ساخت حساب Gmail، آیا می‌خواهید از پروکسی استفاده کنید؟",
+            reply_markup=inline_keyboard
         )
     
     def handle_status(self, update, args):
         """Handle /status command"""
         chat_id = update['message']['chat']['id']
         user_id = update['message']['from']['id']
+        
+        # اجرای متد مشترک برای نمایش وضعیت
+        self._show_status(chat_id, user_id)
+        
+    def _show_status(self, chat_id, user_id):
+        """Show status of accounts (shared method for command and callback)"""
         accounts = self.user_data.get(user_id, {}).get('accounts', [])
         
+        # Create return to menu button
+        inline_keyboard = {
+            "inline_keyboard": [
+                [{"text": "🔙 بازگشت به منوی اصلی", "callback_data": "start"}]
+            ]
+        }
+        
         if not accounts:
-            self.send_message(chat_id, "تاکنون هیچ حسابی ایجاد نکرده‌اید.")
+            self.send_message(
+                chat_id, 
+                "📭 <b>حسابی یافت نشد</b>\n\n"
+                "شما تاکنون هیچ حسابی ایجاد نکرده‌اید.\n"
+                "برای ساخت حساب جدید، از دکمه «ساخت حساب جدید» در منوی اصلی استفاده کنید.",
+                reply_markup=inline_keyboard
+            )
             return
         
-        message = "📊 وضعیت حساب‌های شما:\n\n"
+        message = "📊 <b>وضعیت حساب‌های شما</b>\n\n"
         
         for i, account in enumerate(accounts):
             status_icon = "✅" if account.get('status') == 'complete' else "❌"
-            message += f"{i+1}. {status_icon} {account.get('gmail')}\n"
+            message += f"{i+1}. {status_icon} <b>{account.get('gmail')}</b>\n"
+            message += f"   📅 تاریخ: {account.get('created_at', 'نامشخص')}\n"
             
             if account.get('api_key'):
-                message += f"   🔑 API Key: {account.get('api_key')}\n"
+                # فقط بخشی از کلید را نمایش می‌دهیم
+                api_key = account.get('api_key')
+                masked_key = f"{api_key[:6]}...{api_key[-4:]}" if len(api_key) > 10 else "***"
+                message += f"   🔑 API Key: <code>{masked_key}</code>\n"
             else:
                 message += f"   ⚠️ کلید API: دریافت نشد\n"
             
             message += "\n"
         
-        self.send_message(chat_id, message)
+        message += "برای مشاهده اطلاعات کامل یا کپی کردن کلیدها، با ربات تماس بگیرید."
+        
+        self.send_message(chat_id, message, reply_markup=inline_keyboard)
     
     def handle_text_message(self, update):
         """Handle regular text messages based on user state"""
@@ -220,9 +356,19 @@ class TelegramBot:
                 self.user_data[user_id]['state'] = None
                 
             except Exception as e:
+                # Create inline keyboard for return button
+                inline_keyboard = {
+                    "inline_keyboard": [
+                        [{"text": "🔄 تلاش مجدد", "callback_data": "create"}]
+                    ]
+                }
+                
                 self.send_message(
                     chat_id,
-                    f"خطا در پروکسی: {str(e)}\nلطفاً مجدداً تلاش کنید یا از گزینه بدون پروکسی استفاده کنید."
+                    f"❌ <b>خطا در تنظیم پروکسی</b>\n\n"
+                    f"پیام خطا: {str(e)}\n\n"
+                    f"لطفاً مجدداً تلاش کنید یا از گزینه بدون پروکسی استفاده کنید.",
+                    reply_markup=inline_keyboard
                 )
     
     def process_account_creation(self, chat_id, user_id, proxy=None):
@@ -230,11 +376,19 @@ class TelegramBot:
         from utils import generate_random_user_info
         import gmail_creator
         import api_key_generator
+        import datetime
         
         user_info = generate_random_user_info()
         
+        # Create inline keyboard for return to menu
+        inline_keyboard = {
+            "inline_keyboard": [
+                [{"text": "🔙 بازگشت به منوی اصلی", "callback_data": "start"}]
+            ]
+        }
+        
         # Send initial status message
-        response = self.send_message(chat_id, "⏳ در حال ساخت حساب Gmail...")
+        response = self.send_message(chat_id, "⏳ <b>در حال ساخت حساب Gmail...</b>")
         if not response or not response.get('ok'):
             logger.error("Failed to send initial status message")
             return
@@ -259,7 +413,9 @@ class TelegramBot:
                 self.update_message(
                     chat_id, 
                     status_message_id,
-                    f"❌ خطا در ساخت حساب Gmail: {gmail_result['error']}"
+                    f"❌ <b>خطا در ساخت حساب Gmail</b>\n\n"
+                    f"پیام خطا: {gmail_result['error']}",
+                    reply_markup=inline_keyboard
                 )
                 return
             
@@ -267,8 +423,9 @@ class TelegramBot:
             self.update_message(
                 chat_id,
                 status_message_id,
-                f"✅ حساب Gmail با موفقیت ساخته شد: {gmail}\n"
-                f"⏳ در حال دریافت کلید API Gemini..."
+                f"✅ <b>حساب Gmail با موفقیت ساخته شد:</b>\n"
+                f"📧 {gmail}\n\n"
+                f"⏳ <b>در حال دریافت کلید API Gemini...</b>"
             )
             
             # Generate API key
@@ -278,12 +435,19 @@ class TelegramBot:
                 proxy=proxy
             )
             
+            # Get current date and time for record
+            current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
             if not api_result['success']:
                 self.update_message(
                     chat_id,
                     status_message_id,
-                    f"✅ حساب Gmail: {gmail}\n"
-                    f"❌ خطا در دریافت کلید API: {api_result['error']}"
+                    f"⚠️ <b>ساخت حساب ناقص</b>\n\n"
+                    f"✅ <b>حساب Gmail:</b> {gmail}\n"
+                    f"🔒 <b>رمز عبور:</b> <code>{user_info['password']}</code>\n\n"
+                    f"❌ <b>خطا در دریافت کلید API:</b>\n"
+                    f"{api_result['error']}",
+                    reply_markup=inline_keyboard
                 )
                 # Save account info without API key
                 if 'accounts' not in self.user_data[user_id]:
@@ -293,7 +457,8 @@ class TelegramBot:
                     'gmail': gmail,
                     'password': user_info['password'],
                     'api_key': None,
-                    'status': 'api_failed'
+                    'status': 'api_failed',
+                    'created_at': current_time
                 })
                 return
             
@@ -306,26 +471,39 @@ class TelegramBot:
                 'gmail': gmail,
                 'password': user_info['password'],
                 'api_key': api_key,
-                'status': 'complete'
+                'status': 'complete',
+                'created_at': current_time
             })
             
-            # Send complete success message
+            # Send complete success message with return button
             self.update_message(
                 chat_id,
                 status_message_id,
-                f"✅ عملیات با موفقیت انجام شد!\n\n"
-                f"📧 Gmail: {gmail}\n"
-                f"🔑 Password: {user_info['password']}\n"
-                f"🔑 API Key: {api_key}\n\n"
-                f"این اطلاعات را در جایی امن ذخیره کنید."
+                f"✅ <b>عملیات با موفقیت انجام شد!</b>\n\n"
+                f"📧 <b>Gmail:</b> <code>{gmail}</code>\n"
+                f"🔐 <b>Password:</b> <code>{user_info['password']}</code>\n"
+                f"🔑 <b>API Key:</b> <code>{api_key}</code>\n\n"
+                f"⚠️ این اطلاعات را در جایی امن ذخیره کنید.",
+                reply_markup=inline_keyboard
             )
             
         except Exception as e:
             logger.error(f"Error in account creation process: {str(e)}")
+            
+            # Create inline keyboard for return to menu
+            inline_keyboard = {
+                "inline_keyboard": [
+                    [{"text": "🔙 بازگشت به منوی اصلی", "callback_data": "start"}]
+                ]
+            }
+            
             self.update_message(
                 chat_id,
                 status_message_id,
-                f"❌ خطای غیرمنتظره: {str(e)}"
+                f"❌ <b>خطای غیرمنتظره در فرآیند ساخت حساب</b>\n\n"
+                f"پیام خطا: {str(e)}\n\n"
+                f"لطفاً دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.",
+                reply_markup=inline_keyboard
             )
     
     def run(self):
