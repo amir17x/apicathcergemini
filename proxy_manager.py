@@ -23,17 +23,27 @@ DEFAULT_PROXIES = [
 # منابع پروکسی آنلاین
 PROXY_SOURCES = {
     'socks5': [
+        # API جدید از ProxyScrape
+        'https://api.proxyscrape.com/v4/free-proxy-list/get?request=display_proxies&proxy_format=protocol|port&format=text',
+        'https://api.proxyscrape.com/v4/free-proxy-list/get?request=displayproxies&protocol=socks5&timeout=10000&country=all&ssl=all&anonymity=all',
+        # APIهای قبلی
         'https://api.proxyscrape.com/v2/?request=getproxies&protocol=socks5&timeout=10000&country=all',
         'https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/socks5.txt',
         'https://raw.githubusercontent.com/ShiftyTR/Proxy-List/master/socks5.txt',
         'https://raw.githubusercontent.com/hookzof/socks5_list/master/proxy.txt',
     ],
     'socks4': [
+        # API جدید از ProxyScrape
+        'https://api.proxyscrape.com/v4/free-proxy-list/get?request=displayproxies&protocol=socks4&timeout=10000&country=all&ssl=all&anonymity=all',
+        # APIهای قبلی
         'https://api.proxyscrape.com/v2/?request=getproxies&protocol=socks4&timeout=10000&country=all',
         'https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/socks4.txt',
         'https://raw.githubusercontent.com/ShiftyTR/Proxy-List/master/socks4.txt',
     ],
     'http': [
+        # API جدید از ProxyScrape
+        'https://api.proxyscrape.com/v4/free-proxy-list/get?request=displayproxies&protocol=http&timeout=10000&country=all&ssl=all&anonymity=all',
+        # APIهای قبلی
         'https://api.proxyscrape.com/v2/?request=getproxies&protocol=http&timeout=10000&country=all',
         'https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/http.txt',
         'https://raw.githubusercontent.com/ShiftyTR/Proxy-List/master/http.txt',
@@ -248,9 +258,84 @@ def test_proxy(proxy_data, timeout=5):
         logger.warning(f"خطا در تست پروکسی: {e}")
         return False
 
+def get_proxyscrape_proxies(api_url=None):
+    """
+    دریافت پروکسی از سرویس ProxyScrape با استفاده از API جدید
+    
+    Args:
+        api_url: آدرس API برای دریافت پروکسی (اختیاری)
+        
+    Returns:
+        list: لیست پروکسی‌های دریافت شده
+    """
+    # اگر آدرس API ارائه نشده باشد، از آدرس پیش‌فرض استفاده می‌کنیم
+    if not api_url:
+        api_url = 'https://api.proxyscrape.com/v4/free-proxy-list/get?request=displayproxies&protocol=all&timeout=10000&country=all&ssl=all&anonymity=all'
+    
+    logger.info(f"دریافت پروکسی از ProxyScrape API: {api_url}")
+    
+    try:
+        response = requests.get(api_url, timeout=10)
+        if response.status_code == 200:
+            proxies = []
+            for line in response.text.strip().split('\n'):
+                line = line.strip()
+                if not line or len(line) < 7:  # حداقل طول معتبر (1.1.1.1:1)
+                    continue
+                
+                try:
+                    # اگر با پروتکل شروع می‌شود (socks5://ip:port)
+                    if line.startswith(('http://', 'https://', 'socks4://', 'socks5://')):
+                        proxy = parse_custom_proxy(line)
+                        if proxy:
+                            proxies.append(proxy)
+                    
+                    # فرمت ساده ip:port
+                    elif ':' in line:
+                        host, port = line.split(':')
+                        # سعی می‌کنیم نوع پروکسی را از URL تشخیص دهیم
+                        if 'protocol=socks5' in api_url:
+                            proxy_type = 'socks5'
+                        elif 'protocol=socks4' in api_url:
+                            proxy_type = 'socks4'
+                        elif 'protocol=http' in api_url:
+                            proxy_type = 'http'
+                        else:
+                            # اگر نتوانیم نوع را تشخیص دهیم، socks5 را فرض می‌کنیم
+                            proxy_type = 'socks5'
+                            
+                        proxies.append({
+                            "host": host.strip(),
+                            "port": port.strip(),
+                            "username": "",
+                            "password": "",
+                            "type": proxy_type
+                        })
+                except Exception as e:
+                    logger.debug(f"خطا در پردازش خط پروکسی: {e}")
+                    continue
+                    
+            logger.info(f"تعداد {len(proxies)} پروکسی از ProxyScrape API دریافت شد")
+            return proxies
+        else:
+            logger.warning(f"خطا در دریافت پروکسی از ProxyScrape API. کد پاسخ: {response.status_code}")
+    except Exception as e:
+        logger.warning(f"خطا در دریافت پروکسی از ProxyScrape API: {e}")
+    
+    return []
+
 def get_working_proxy():
     """یافتن یک پروکسی کارآمد از لیست پروکسی‌ها"""
-    # ابتدا لیست پروکسی‌های عمومی را دریافت می‌کنیم
+    # ابتدا از API جدید ProxyScrape استفاده می‌کنیم
+    proxies = get_proxyscrape_proxies()
+    
+    # تست پروکسی‌های دریافت شده از API جدید
+    for proxy in proxies[:10]:  # حداکثر 10 پروکسی را تست می‌کنیم
+        if test_proxy(proxy):
+            logger.info(f"پروکسی کارآمد از ProxyScrape API پیدا شد: {proxy.get('host')}:{proxy.get('port')}")
+            return proxy
+    
+    # اگر پروکسی کارآمدی از API جدید پیدا نشد، از سایر منابع استفاده می‌کنیم
     proxies = get_public_proxies()
     
     # تست تصادفی حداکثر 5 پروکسی
@@ -315,17 +400,55 @@ def find_working_proxy_from_list(proxy_list):
     logger.warning("هیچ پروکسی کارآمدی در لیست پیدا نشد")
     return None
 
-def get_proxy(custom_proxy=None):
+def get_proxy_from_api_url(api_url):
+    """
+    دریافت پروکسی از یک URL API خارجی
+    
+    Args:
+        api_url: آدرس API برای دریافت پروکسی
+        
+    Returns:
+        dict: یک پروکسی کارآمد یا None اگر پروکسی کارآمدی پیدا نشد
+    """
+    logger.info(f"دریافت پروکسی از URL API خارجی: {api_url}")
+    
+    # ابتدا دریافت لیست پروکسی‌ها
+    proxies = get_proxyscrape_proxies(api_url)
+    
+    # اگر پروکسی دریافت نشد
+    if not proxies:
+        logger.warning(f"هیچ پروکسی از {api_url} دریافت نشد")
+        return None
+    
+    # تست پروکسی‌ها
+    logger.info(f"تست {len(proxies)} پروکسی دریافت شده از API خارجی")
+    for proxy in proxies[:15]:  # حداکثر 15 پروکسی را تست می‌کنیم
+        if test_proxy(proxy):
+            logger.info(f"پروکسی کارآمد از API خارجی پیدا شد: {proxy.get('host')}:{proxy.get('port')}")
+            return proxy
+            
+    logger.warning(f"هیچ پروکسی کارآمدی از {len(proxies)} پروکسی دریافت شده پیدا نشد")
+    return None
+
+def get_proxy(custom_proxy=None, api_url=None):
     """
     دریافت یک پروکسی برای استفاده در برنامه
     
     Args:
         custom_proxy: رشته پروکسی سفارشی (اختیاری)
+        api_url: آدرس API برای دریافت پروکسی (اختیاری)
         
     Returns:
         dict: دیکشنری پروکسی یا None اگر پروکسی موجود نباشد
     """
-    # اگر پروکسی سفارشی ارائه شده باشد، آن را پردازش می‌کنیم
+    # ابتدا اگر URL API ارائه شده باشد، از آن استفاده می‌کنیم
+    if api_url:
+        proxy = get_proxy_from_api_url(api_url)
+        if proxy:
+            return proxy
+        logger.warning(f"استفاده از URL API ناموفق بود: {api_url}")
+    
+    # سپس اگر پروکسی سفارشی ارائه شده باشد، آن را پردازش می‌کنیم
     if custom_proxy:
         # بررسی اینکه آیا لیستی از پروکسی‌ها است یا یک پروکسی تکی
         if '\n' in custom_proxy:
@@ -335,6 +458,13 @@ def get_proxy(custom_proxy=None):
             if working_proxy:
                 return working_proxy
             logger.warning("هیچ پروکسی کارآمدی در لیست سفارشی پیدا نشد")
+        # بررسی اینکه آیا URL است
+        elif custom_proxy.startswith(('http://', 'https://')):
+            # ممکن است URL یک سرویس پروکسی باشد
+            proxy = get_proxy_from_api_url(custom_proxy)
+            if proxy:
+                return proxy
+            logger.warning(f"استفاده از URL پروکسی ناموفق بود: {custom_proxy}")
         else:
             # پردازش یک پروکسی تکی
             proxy = parse_custom_proxy(custom_proxy)

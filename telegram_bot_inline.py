@@ -161,10 +161,14 @@ class InlineTelegramBot:
                         self.handle_no_proxy(chat_id, user_id)
                     elif data == 'use_proxy':
                         self.prompt_for_proxy(chat_id, user_id)
+                    elif data == 'use_proxy_api':
+                        self.prompt_for_proxy_api(chat_id, user_id)
                     elif data == 'show_proxy_resources':
                         self.show_proxy_resources(chat_id, user_id)
                     elif data == 'back_to_main':
                         self.show_main_menu(chat_id, user_id)
+                    elif data == 'back_to_proxy':
+                        self.show_proxy_options(chat_id, user_id)
                     elif data.startswith('batch_'):
                         # پردازش گزینه‌های تعداد اکانت برای ساخت
                         try:
@@ -216,6 +220,10 @@ class InlineTelegramBot:
                     # اگر کاربر در حالت ورود پروکسی است
                     elif self.user_data.get(user_id, {}).get('state') == 'waiting_for_proxy':
                         self.handle_custom_proxy(chat_id, user_id, text)
+                    
+                    # اگر کاربر در حالت ورود URL API پروکسی است
+                    elif self.user_data.get(user_id, {}).get('state') == 'waiting_for_proxy_api':
+                        self.handle_proxy_api(chat_id, user_id, text)
                 
             except Exception as e:
                 logger.error(f"Error handling update: {e}")
@@ -351,6 +359,8 @@ class InlineTelegramBot:
             "inline_keyboard": [
                 [{"text": "🔄 بدون پروکسی", "callback_data": "no_proxy"}],
                 [{"text": "🌐 استفاده از پروکسی", "callback_data": "use_proxy"}],
+                [{"text": "🔗 استفاده از API پروکسی", "callback_data": "use_proxy_api"}],
+                [{"text": "📚 منابع پروکسی", "callback_data": "show_proxy_resources"}],
                 [{"text": "🔙 بازگشت", "callback_data": "back_to_main"}]
             ]
         }
@@ -358,6 +368,11 @@ class InlineTelegramBot:
         proxy_text = (
             "🌐 <b>انتخاب پروکسی</b>\n\n"
             "برای ساخت حساب Gmail و دریافت کلید API، استفاده از پروکسی به‌خصوص از کشورهایی مانند آمریکا یا اروپا توصیه می‌شود.\n\n"
+            "🔹 <b>گزینه‌های پروکسی:</b>\n"
+            "1️⃣ <b>بدون پروکسی:</b> تلاش برای ساخت حساب بدون استفاده از پروکسی\n"
+            "2️⃣ <b>استفاده از پروکسی:</b> وارد کردن پروکسی دستی یا لیست پروکسی\n"
+            "3️⃣ <b>استفاده از API پروکسی:</b> استفاده از URL سرویس‌های پروکسی مانند ProxyScrape\n"
+            "4️⃣ <b>منابع پروکسی:</b> اطلاعات و لینک‌های مفید برای یافتن پروکسی‌های رایگان\n\n"
             "<b>گزینه مورد نظر خود را انتخاب کنید:</b>"
         )
         
@@ -488,6 +503,97 @@ class InlineTelegramBot:
         status_text += "برای دریافت کلید API کامل، با ربات تماس بگیرید."
         
         self.send_message(chat_id, status_text, reply_markup=keyboard)
+    
+    def prompt_for_proxy_api(self, chat_id, user_id):
+        """درخواست وارد کردن URL API پروکسی از کاربر."""
+        # تنظیم وضعیت کاربر به حالت انتظار برای دریافت URL API پروکسی
+        self.user_data[user_id]['state'] = 'waiting_for_proxy_api'
+        
+        keyboard = {
+            "inline_keyboard": [
+                [{"text": "🔙 بازگشت به تنظیمات پروکسی", "callback_data": "back_to_proxy"}]
+            ]
+        }
+        
+        proxy_api_text = (
+            "🔗 <b>استفاده از API پروکسی</b>\n\n"
+            "شما می‌توانید از URL های سرویس‌های ارائه دهنده پروکسی مانند ProxyScrape استفاده کنید.\n\n"
+            "<b>نمونه URL:</b>\n"
+            "<code>https://api.proxyscrape.com/v4/free-proxy-list/get?request=displayproxies&protocol=socks5&timeout=10000&country=all&ssl=all&anonymity=all</code>\n\n"
+            "لطفاً URL کامل API را وارد کنید یا با دستور /cancel به منوی اصلی بازگردید."
+        )
+        
+        self.send_message(chat_id, proxy_api_text, reply_markup=keyboard)
+        
+        # ارسال نمونه‌ای از API URL های آماده
+        example_text = (
+            "📝 <b>نمونه URL های آماده:</b>\n\n"
+            "1️⃣ <b>SOCKS5:</b>\n"
+            "<code>https://api.proxyscrape.com/v4/free-proxy-list/get?request=displayproxies&protocol=socks5</code>\n\n"
+            "2️⃣ <b>SOCKS4:</b>\n"
+            "<code>https://api.proxyscrape.com/v4/free-proxy-list/get?request=displayproxies&protocol=socks4</code>\n\n"
+            "3️⃣ <b>HTTP:</b>\n"
+            "<code>https://api.proxyscrape.com/v4/free-proxy-list/get?request=displayproxies&protocol=http</code>\n\n"
+            "4️⃣ <b>همه پروکسی‌ها:</b>\n"
+            "<code>https://api.proxyscrape.com/v4/free-proxy-list/get?request=displayproxies&protocol=all</code>"
+        )
+        
+        self.send_message(chat_id, example_text)
+    
+    def handle_proxy_api(self, chat_id, user_id, api_url):
+        """پردازش URL API پروکسی وارد شده توسط کاربر."""
+        try:
+            # بررسی اعتبار URL
+            if not api_url.startswith(('http://', 'https://')):
+                self.send_message(
+                    chat_id,
+                    f"❌ <b>URL نامعتبر است</b>\n\n"
+                    f"URL باید با http:// یا https:// شروع شود.\n"
+                    f"لطفاً دوباره تلاش کنید یا از منوی اصلی استفاده کنید."
+                )
+                return
+            
+            # ارسال پیام وضعیت
+            self.send_message(
+                chat_id,
+                f"⏳ <b>در حال دریافت و تست پروکسی‌ها از API...</b>\n\n"
+                f"URL: <code>{api_url}</code>"
+            )
+            
+            # دریافت پروکسی از API
+            import proxy_manager
+            proxy = proxy_manager.get_proxy_from_api_url(api_url)
+            
+            if proxy:
+                self.user_data[user_id]['proxy'] = proxy
+                
+                # نمایش پیام موفقیت و گزینه‌های تعداد حساب
+                self.send_message(
+                    chat_id, 
+                    f"✅ <b>پروکسی کارآمد از API دریافت شد</b>\n\n"
+                    f"نوع: {proxy.get('type')}\n"
+                    f"آدرس: {proxy.get('host')}:{proxy.get('port')}"
+                )
+                
+                # نمایش گزینه‌های تعداد حساب
+                self.show_batch_options(chat_id, proxy)
+                
+                # پاک کردن وضعیت
+                self.user_data[user_id]['state'] = None
+            else:
+                self.send_message(
+                    chat_id,
+                    f"❌ <b>هیچ پروکسی کارآمدی از API دریافت نشد</b>\n\n"
+                    f"لطفاً URL دیگری وارد کنید یا از گزینه «استفاده از پروکسی خودکار» استفاده کنید."
+                )
+        except Exception as e:
+            logger.error(f"Error processing proxy API URL: {e}")
+            self.send_message(
+                chat_id,
+                f"❌ <b>خطا در دریافت پروکسی از API</b>\n\n"
+                f"پیام خطا: {str(e)}\n\n"
+                f"لطفاً مجدداً تلاش کنید یا از گزینه «بدون پروکسی» استفاده کنید."
+            )
     
     def show_proxy_resources(self, chat_id, user_id):
         """نمایش منابع پیشنهادی پروکسی."""
