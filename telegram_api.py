@@ -50,8 +50,11 @@ class TelegramBot:
             params['reply_markup'] = json.dumps(reply_markup)
             
         try:
-            response = requests.post(f"{self.base_url}/sendMessage", json=params)
-            return response.json()
+            response = requests.post(f"{self.base_url}/sendMessage", data=params)
+            result = response.json()
+            if not result.get('ok'):
+                logger.warning(f"Failed to send message: {result.get('description')}")
+            return result
         except Exception as e:
             logger.error(f"Error sending message: {e}")
             return None
@@ -69,8 +72,11 @@ class TelegramBot:
             params['reply_markup'] = json.dumps(reply_markup)
             
         try:
-            response = requests.post(f"{self.base_url}/editMessageText", json=params)
-            return response.json()
+            response = requests.post(f"{self.base_url}/editMessageText", data=params)
+            result = response.json()
+            if not result.get('ok'):
+                logger.warning(f"Failed to update message: {result.get('description')}")
+            return result
         except Exception as e:
             logger.error(f"Error updating message: {e}")
             return None
@@ -187,8 +193,12 @@ class TelegramBot:
             params['show_alert'] = True
             
         try:
-            response = requests.post(f"{self.base_url}/answerCallbackQuery", json=params)
-            return response.json()
+            # Using URLencoded parameters instead of JSON
+            response = requests.post(f"{self.base_url}/answerCallbackQuery", data=params)
+            result = response.json()
+            if not result.get('ok'):
+                logger.warning(f"Failed to answer callback query: {result.get('description')}")
+            return result
         except Exception as e:
             logger.error(f"Error answering callback query: {e}")
             return None
