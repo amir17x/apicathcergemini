@@ -1,8 +1,8 @@
 import os
 import logging
 import time
-from python_telegram_bot import Update, InlineKeyboardMarkup, InlineKeyboardButton
-from python_telegram_bot.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes, ConversationHandler
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes, ConversationHandler
 from gmail_creator import create_gmail_account
 from api_key_generator import generate_api_key
 from utils import generate_random_user_info
@@ -276,4 +276,4 @@ def start_polling():
     application.run_polling()
 
 # The following import needs to be at the end to avoid circular imports
-from python_telegram_bot.ext import MessageHandler, filters
+from telegram.ext import MessageHandler, filters

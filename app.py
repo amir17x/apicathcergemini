@@ -3,7 +3,7 @@ import logging
 from flask import Flask, render_template, request, jsonify, session
 from flask_sqlalchemy import SQLAlchemy
 import threading
-# Temporarily disable bot import for web interface testing
+# Temporarily disable bot import to make web interface work
 # import bot
 
 # Configure logging
@@ -15,8 +15,13 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "default_secret_key")
 
-# Use SQLite for simplicity
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///bot.db")
+# Use PostgreSQL database
+database_url = os.environ.get("DATABASE_URL")
+# If DATABASE_URL starts with postgres://, replace it with postgresql:// as required by SQLAlchemy
+if database_url and database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
+
+app.config["SQLALCHEMY_DATABASE_URI"] = database_url or "sqlite:///bot.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
@@ -43,9 +48,10 @@ with app.app_context():
     db.create_all()
 
 # Start the Telegram bot in a separate thread
-# Temporarily disabled for web interface testing
-# def start_bot():
-#     bot.start_polling()
+def start_bot():
+    # Temporarily disabled
+    # bot.start_polling()
+    logger.info("Bot start_polling is disabled temporarily")
 
 # Routes
 @app.route('/')
@@ -62,9 +68,8 @@ def get_accounts():
     return jsonify([account.to_dict() for account in accounts])
 
 # Start the bot in a separate thread when the application starts
-# Temporarily disabled for web interface testing
-# if not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
-#     bot_thread = threading.Thread(target=start_bot)
-#     bot_thread.daemon = True
-#     bot_thread.start()
-#     logger.info("Telegram bot started in background thread")
+if not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+    bot_thread = threading.Thread(target=start_bot)
+    bot_thread.daemon = True
+    bot_thread.start()
+    logger.info("Telegram bot started in background thread")
