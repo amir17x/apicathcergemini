@@ -1,0 +1,121 @@
+ModuleNotFoundError: No module named 'distutils'
+
+Traceback (most recent call last):
+
+  File "/app/main.py", line 13, in <module>
+
+    from telegram_bot_inline import InlineTelegramBot
+
+  File "/app/telegram_bot_inline.py", line 13, in <module>
+
+    import gmail_creator
+
+  File "/app/gmail_creator.py", line 14, in <module>
+
+    import undetected_chromedriver as uc
+
+  File "/opt/venv/lib/python3.12/site-packages/undetected_chromedriver/__init__.py", line 44, in <module>
+
+    from .patcher import IS_POSIX
+
+  File "/opt/venv/lib/python3.12/site-packages/undetected_chromedriver/patcher.py", line 4, in <module>
+
+    from distutils.version import LooseVersion
+
+ModuleNotFoundError: No module named 'distutils'
+
+Traceback (most recent call last):
+
+  File "/app/main.py", line 13, in <module>
+
+    from telegram_bot_inline import InlineTelegramBot
+
+  File "/app/telegram_bot_inline.py", line 13, in <module>
+
+    import gmail_creator
+
+  File "/app/gmail_creator.py", line 14, in <module>
+
+    import undetected_chromedriver as uc
+
+  File "/opt/venv/lib/python3.12/site-packages/undetected_chromedriver/__init__.py", line 44, in <module>
+
+    from .patcher import IS_POSIX
+
+  File "/opt/venv/lib/python3.12/site-packages/undetected_chromedriver/patcher.py", line 4, in <module>
+
+    from distutils.version import LooseVersion
+
+ModuleNotFoundError: No module named 'distutils'
+
+Traceback (most recent call last):
+
+  File "/app/main.py", line 13, in <module>
+
+    from telegram_bot_inline import InlineTelegramBot
+
+  File "/app/telegram_bot_inline.py", line 13, in <module>
+
+    import gmail_creator
+
+  File "/app/gmail_creator.py", line 14, in <module>
+
+    import undetected_chromedriver as uc
+
+  File "/opt/venv/lib/python3.12/site-packages/undetected_chromedriver/__init__.py", line 44, in <module>
+
+    from .patcher import IS_POSIX
+
+  File "/opt/venv/lib/python3.12/site-packages/undetected_chromedriver/patcher.py", line 4, in <module>
+
+    from distutils.version import LooseVersion
+
+ModuleNotFoundError: No module named 'distutils'
+
+Traceback (most recent call last):
+
+  File "/app/main.py", line 13, in <module>
+
+    from telegram_bot_inline import InlineTelegramBot
+
+  File "/app/telegram_bot_inline.py", line 13, in <module>
+
+    import gmail_creator
+
+  File "/app/gmail_creator.py", line 14, in <module>
+
+    import undetected_chromedriver as uc
+
+  File "/opt/venv/lib/python3.12/site-packages/undetected_chromedriver/__init__.py", line 44, in <module>
+
+    from .patcher import IS_POSIX
+
+  File "/opt/venv/lib/python3.12/site-packages/undetected_chromedriver/patcher.py", line 4, in <module>
+
+    from distutils.version import LooseVersion
+
+ModuleNotFoundError: No module named 'distutils'
+
+Traceback (most recent call last):
+
+  File "/app/main.py", line 13, in <module>
+
+    from telegram_bot_inline import InlineTelegramBot
+
+  File "/app/telegram_bot_inline.py", line 13, in <module>
+
+    import gmail_creator
+
+  File "/app/gmail_creator.py", line 14, in <module>
+
+    import undetected_chromedriver as uc
+
+  File "/opt/venv/lib/python3.12/site-packages/undetected_chromedriver/__init__.py", line 44, in <module>
+
+    from .patcher import IS_POSIX
+
+  File "/opt/venv/lib/python3.12/site-packages/undetected_chromedriver/patcher.py", line 4, in <module>
+
+    from distutils.version import LooseVersion
+
+ModuleNotFoundError: No module named 'distutils'

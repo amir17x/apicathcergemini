@@ -1,0 +1,1 @@
+web: python fix-distutils.py && gunicorn --bind 0.0.0.0:$PORT main:app

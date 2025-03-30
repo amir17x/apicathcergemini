@@ -1,0 +1,32 @@
+[project]
+name = "telegram-api-creator-bot"
+version = "0.1.0"
+description = "Telegram bot for Gmail account creation and Google Gemini API key generation"
+requires-python = ">=3.10,<3.12"  # محدود کردن به نسخه‌های قبل از 3.12
+dependencies = [
+    "packaging>=21.3",  # برای جایگزینی distutils
+    "email-validator>=2.2.0",
+    "flask>=3.1.0",
+    "flask-sqlalchemy>=3.1.1",
+    "gunicorn>=23.0.0",
+    "psycopg2-binary>=2.9.10",
+    "python-telegram-bot[all]>=22.0",
+    "requests>=2.32.3",
+    "selenium>=4.9.0,<4.10.0",  # نسخه محدودشده برای سازگاری بیشتر
+    "sqlalchemy>=2.0.40",
+    "telegram>=0.0.1",
+    "twilio>=9.5.1",
+    "undetected-chromedriver>=3.4.0,<3.5.0",  # نسخه محدودشده برای سازگاری بیشتر
+    "webdriver-manager>=4.0.2",
+]
+
+[tool.setuptools]
+packages = ["find-namespace"]
+
+[build-system]
+requires = ["setuptools>=65.5.0", "wheel>=0.40.0"]
+build-backend = "setuptools.build_meta"
+
+# نصب پکیج distutils به عنوان وابستگی
+[tool.setuptools.dependencies]
+distutils = "*"
