@@ -1,0 +1,104 @@
+O5_Y0ZErLTqPqEoFiFKvM/getMe HTTP/1.1" 200 255
+2025-03-30 09:19:57,435 - main - INFO - ✅ اتصال به ربات برقرار شد: @apigeminiprobot (ID: 7877987201)
+2025-03-30 09:19:57,437 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-03-30 09:19:57,790 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=-1&limit=1&timeout=5 HTTP/1.1" 200 351
+2025-03-30 09:19:57,792 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-03-30 09:20:03,148 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=534762876&limit=1&timeout=5 HTTP/1.1" 200 23
+2025-03-30 09:20:03,149 - main - INFO - ✅ همه‌ی آپدیت‌های قبلی پاک شدند - تنظیم آفست به 534762876
+2025-03-30 09:20:03,149 - main - INFO - 🚀 شروع حلقه‌ی اصلی ربات
+2025-03-30 09:20:03,149 - main - INFO - ✅ ترد ربات با شناسه 140126525060800 شروع به کار کرد
+2025-03-30 09:20:03,149 - telegram_bot_inline - INFO - Starting bot polling with robust error handling...
+2025-03-30 09:20:03,150 - telegram_bot_inline - INFO - Bot token available and valid: True
+2025-03-30 09:20:03,152 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-03-30 09:20:03,503 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getMe HTTP/1.1" 200 255
+2025-03-30 09:20:03,503 - telegram_bot_inline - INFO - ✅ Connected to bot: @apigeminiprobot (ID: 7877987201)
+2025-03-30 09:20:03,503 - telegram_bot_inline - INFO - Clearing all previous updates directly via API...
+2025-03-30 09:20:03,504 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-03-30 09:20:04,856 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=-1&timeout=1 HTTP/1.1" 200 23
+2025-03-30 09:20:04,856 - telegram_bot_inline - INFO - 🔄 Entering main polling loop...
+2025-03-30 09:20:04,858 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-03-30 09:20:35,211 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=0&timeout=30&allowed_updates=%5B%22message%22%2C+%22edited_message%22%2C+%22callback_query%22%5D HTTP/1.1" 200 23
+2025-03-30 09:20:35,313 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+[2025-03-30 09:21:00 +0000] [1347] [INFO] Worker reloading: /home/runner/workspace/telegram_bot_inline.py modified
+[2025-03-30 09:21:00 +0000] [1347] [INFO] Worker exiting (pid: 1347)
+[2025-03-30 09:21:00 +0000] [1443] [INFO] Booting worker with pid: 1443
+2025-03-30 09:21:00,978 - main - INFO - ==================================================
+2025-03-30 09:21:00,978 - main - INFO - TELEGRAM BOT APPLICATION STARTING - RAILWAY OPTIMIZED
+2025-03-30 09:21:00,978 - main - INFO - ==================================================
+2025-03-30 09:21:01,914 - main - INFO - ✅ جداول دیتابیس با موفقیت ایجاد شدند
+2025-03-30 09:21:01,916 - main - INFO - 🔄 تلاش برای راه‌اندازی ربات در شروع برنامه
+2025-03-30 09:21:01,916 - main - INFO - 🔄 شروع راه‌اندازی ربات تلگرام
+2025-03-30 09:21:01,916 - telegram_bot_inline - INFO - Database models imported successfully
+2025-03-30 09:21:01,918 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-03-30 09:21:02,270 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getMe HTTP/1.1" 200 255
+2025-03-30 09:21:02,270 - main - INFO - ✅ اتصال به ربات برقرار شد: @apigeminiprobot (ID: 7877987201)
+2025-03-30 09:21:02,271 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-03-30 09:21:07,623 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=-1&limit=1&timeout=5 HTTP/1.1" 200 23
+2025-03-30 09:21:07,624 - main - INFO - 🚀 شروع حلقه‌ی اصلی ربات
+2025-03-30 09:21:07,624 - main - INFO - ✅ ترد ربات با شناسه 140126525060800 شروع به کار کرد
+2025-03-30 09:21:07,624 - telegram_bot_inline - INFO - Starting bot polling with robust error handling...
+2025-03-30 09:21:07,625 - telegram_bot_inline - INFO - Bot token available and valid: True
+2025-03-30 09:21:07,627 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-03-30 09:21:07,980 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getMe HTTP/1.1" 200 255
+2025-03-30 09:21:07,980 - telegram_bot_inline - INFO - ✅ Connected to bot: @apigeminiprobot (ID: 7877987201)
+2025-03-30 09:21:07,980 - telegram_bot_inline - INFO - Clearing all previous updates directly via API...
+2025-03-30 09:21:07,982 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-03-30 09:21:09,341 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=-1&timeout=1 HTTP/1.1" 200 23
+2025-03-30 09:21:09,342 - telegram_bot_inline - INFO - 🔄 Entering main polling loop...
+2025-03-30 09:21:09,343 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+[2025-03-30 09:21:12 +0000] [1443] [INFO] Worker reloading: /home/runner/workspace/telegram_bot_inline.py modified
+[2025-03-30 09:21:12 +0000] [1443] [INFO] Worker exiting (pid: 1443)
+[2025-03-30 09:21:12 +0000] [1616] [INFO] Booting worker with pid: 1616
+2025-03-30 09:21:13,397 - main - INFO - ==================================================
+2025-03-30 09:21:13,398 - main - INFO - TELEGRAM BOT APPLICATION STARTING - RAILWAY OPTIMIZED
+2025-03-30 09:21:13,398 - main - INFO - ==================================================
+2025-03-30 09:21:14,290 - main - INFO - ✅ جداول دیتابیس با موفقیت ایجاد شدند
+2025-03-30 09:21:14,291 - main - INFO - 🔄 تلاش برای راه‌اندازی ربات در شروع برنامه
+2025-03-30 09:21:14,292 - main - INFO - 🔄 شروع راه‌اندازی ربات تلگرام
+2025-03-30 09:21:14,292 - telegram_bot_inline - INFO - Database models imported successfully
+2025-03-30 09:21:14,294 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-03-30 09:21:14,646 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getMe HTTP/1.1" 200 255
+2025-03-30 09:21:14,646 - main - INFO - ✅ اتصال به ربات برقرار شد: @apigeminiprobot (ID: 7877987201)
+2025-03-30 09:21:14,648 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-03-30 09:21:19,999 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=-1&limit=1&timeout=5 HTTP/1.1" 200 23
+2025-03-30 09:21:20,001 - main - INFO - 🚀 شروع حلقه‌ی اصلی ربات
+2025-03-30 09:21:20,001 - telegram_bot_inline - INFO - Starting bot polling with robust error handling...
+2025-03-30 09:21:20,001 - telegram_bot_inline - INFO - Bot token available and valid: True
+2025-03-30 09:21:20,001 - main - INFO - ✅ ترد ربات با شناسه 140126525060800 شروع به کار کرد
+2025-03-30 09:21:20,003 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-03-30 09:21:20,357 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getMe HTTP/1.1" 200 255
+2025-03-30 09:21:20,357 - telegram_bot_inline - INFO - ✅ Connected to bot: @apigeminiprobot (ID: 7877987201)
+2025-03-30 09:21:20,357 - telegram_bot_inline - INFO - Clearing all previous updates directly via API...
+2025-03-30 09:21:20,359 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-03-30 09:21:21,713 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=-1&timeout=1 HTTP/1.1" 200 23
+2025-03-30 09:21:21,713 - telegram_bot_inline - INFO - 🔄 Entering main polling loop...
+2025-03-30 09:21:21,714 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-03-30 09:21:52,071 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=0&timeout=30&allowed_updates=%5B%22message%22%2C+%22edited_message%22%2C+%22callback_query%22%5D HTTP/1.1" 200 23
+2025-03-30 09:21:52,173 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+[2025-03-30 09:21:59 +0000] [1616] [INFO] Worker reloading: /home/runner/workspace/telegram_bot_inline.py modified
+[2025-03-30 09:21:59 +0000] [1616] [INFO] Worker exiting (pid: 1616)
+[2025-03-30 09:21:59 +0000] [1668] [INFO] Booting worker with pid: 1668
+2025-03-30 09:21:59,720 - main - INFO - ==================================================
+2025-03-30 09:21:59,721 - main - INFO - TELEGRAM BOT APPLICATION STARTING - RAILWAY OPTIMIZED
+2025-03-30 09:21:59,721 - main - INFO - ==================================================
+2025-03-30 09:22:00,523 - main - INFO - ✅ جداول دیتابیس با موفقیت ایجاد شدند
+2025-03-30 09:22:00,526 - main - INFO - 🔄 تلاش برای راه‌اندازی ربات در شروع برنامه
+2025-03-30 09:22:00,526 - main - INFO - 🔄 شروع راه‌اندازی ربات تلگرام
+2025-03-30 09:22:00,526 - telegram_bot_inline - INFO - Database models imported successfully
+2025-03-30 09:22:00,529 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-03-30 09:22:00,893 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getMe HTTP/1.1" 200 255
+2025-03-30 09:22:00,893 - main - INFO - ✅ اتصال به ربات برقرار شد: @apigeminiprobot (ID: 7877987201)
+2025-03-30 09:22:00,894 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-03-30 09:22:06,248 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=-1&limit=1&timeout=5 HTTP/1.1" 200 23
+2025-03-30 09:22:06,248 - main - INFO - 🚀 شروع حلقه‌ی اصلی ربات
+2025-03-30 09:22:06,248 - telegram_bot_inline - INFO - Starting bot polling with robust error handling...
+2025-03-30 09:22:06,249 - telegram_bot_inline - INFO - Bot token available and valid: True
+2025-03-30 09:22:06,250 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-03-30 09:22:06,251 - main - INFO - ✅ ترد ربات با شناسه 140126525060800 شروع به کار کرد
+2025-03-30 09:22:06,609 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getMe HTTP/1.1" 200 255
+2025-03-30 09:22:06,609 - telegram_bot_inline - INFO - ✅ Connected to bot: @apigeminiprobot (ID: 7877987201)
+2025-03-30 09:22:06,609 - telegram_bot_inline - INFO - Clearing all previous updates directly via API...
+2025-03-30 09:22:06,611 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-03-30 09:22:07,963 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=-1&timeout=1 HTTP/1.1" 200 23
+2025-03-30 09:22:07,963 - telegram_bot_inline - INFO - 🔄 Entering main polling loop...
+2025-03-30 09:22:07,965 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443

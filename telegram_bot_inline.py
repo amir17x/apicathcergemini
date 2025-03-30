@@ -199,19 +199,35 @@ class InlineTelegramBot:
                             args = command_parts[1:] if len(command_parts) > 1 else []
                             
                             # ارسال به هندلر مناسب
+                            # ارسال پیام تایید دریافت دستور
+                            try:
+                                self.send_message(chat_id, f"⏳ در حال پردازش دستور <b>{command}</b>...")
+                            except Exception as notify_error:
+                                logger.error(f"❌ خطا در ارسال پیام تایید: {notify_error}")
+                                
                             if command == 'start':
+                                logger.info(f"🚀 اجرای دستور start برای کاربر {user_id}")
                                 self.handle_start(chat_id, user_id)
                             elif command == 'help':
+                                logger.info(f"📚 اجرای دستور help برای کاربر {user_id}")
                                 self.handle_help(chat_id)
                             elif command == 'create':
+                                logger.info(f"✨ اجرای دستور create برای کاربر {user_id}")
                                 self.show_proxy_options(chat_id, user_id)
                             elif command == 'status':
+                                logger.info(f"📊 اجرای دستور status برای کاربر {user_id}")
                                 self.handle_status(chat_id, user_id)
                             elif command == 'about':
+                                logger.info(f"ℹ️ اجرای دستور about برای کاربر {user_id}")
                                 self.handle_about(chat_id)
+                            elif command == 'menu' or command == 'main':
+                                logger.info(f"🏠 اجرای دستور منو اصلی برای کاربر {user_id}")
+                                self.show_main_menu(chat_id, user_id)
                             elif command == 'noproxy':
+                                logger.info(f"🔄 اجرای دستور noproxy برای کاربر {user_id}")
                                 self.handle_no_proxy(chat_id, user_id)
                             elif command == 'useproxy':
+                                logger.info(f"🌐 اجرای دستور useproxy برای کاربر {user_id}")
                                 # اگر پارامتر پروکسی همراه دستور وارد شده باشد
                                 if len(args) > 0:
                                     proxy_string = args[0]
@@ -219,15 +235,34 @@ class InlineTelegramBot:
                                 else:
                                     self.prompt_for_proxy(chat_id, user_id)
                             else:
-                                self.send_message(chat_id, "❌ دستور نامعتبر است. برای راهنمایی، /help را وارد کنید.")
+                                logger.warning(f"❓ دستور ناشناخته {command} از کاربر {user_id}")
+                                self.send_message(
+                                    chat_id, 
+                                    "❌ <b>دستور نامعتبر است</b>\n\n"
+                                    "برای راهنمایی، دستور /help را وارد کنید یا برای بازگشت به منوی اصلی، دستور /menu را وارد کنید."
+                                )
+                                # نمایش منوی اصلی برای کمک به کاربر
+                                self.show_main_menu(chat_id, user_id)
                         
                         # اگر کاربر در حالت ورود پروکسی است
                         elif self.user_data.get(user_id, {}).get('state') == 'waiting_for_proxy':
+                            logger.info(f"🔄 دریافت اطلاعات پروکسی از کاربر {user_id}")
                             self.handle_custom_proxy(chat_id, user_id, text)
                         
                         # اگر کاربر در حالت ورود URL API پروکسی است
                         elif self.user_data.get(user_id, {}).get('state') == 'waiting_for_proxy_api':
+                            logger.info(f"🔄 دریافت URL API پروکسی از کاربر {user_id}")
                             self.handle_proxy_api(chat_id, user_id, text)
+                            
+                        # اگر پیامی دریافت شد که در وضعیت خاصی نبودیم، منوی اصلی را نمایش می‌دهیم
+                        else:
+                            logger.info(f"📝 پیام متنی عادی از کاربر {user_id}: '{text}'")
+                            self.send_message(
+                                chat_id,
+                                "👋 <b>سلام!</b>\n\n"
+                                "پیام شما دریافت شد. برای استفاده از امکانات ربات، لطفاً از دکمه‌های منوی زیر استفاده کنید:"
+                            )
+                            self.show_main_menu(chat_id, user_id)
                     
                     # اگر پیام حاوی فایل است و کاربر در حالت انتظار پروکسی است
                     elif 'document' in message and self.user_data.get(user_id, {}).get('state') == 'waiting_for_proxy':
@@ -743,7 +778,7 @@ class InlineTelegramBot:
             
             # تنظیم تایم‌اوت برای کل عملیات - کاهش به 20 ثانیه
             max_operation_time = 20  # حداکثر 20 ثانیه برای کل عملیات
-            start_time = time.time()
+            start_time = time.time()  # زمان شروع عملیات
             
             # دریافت پروکسی بر اساس نوع درخواست
             if api_url:
@@ -867,7 +902,11 @@ class InlineTelegramBot:
                 
         except Exception as e:
             logger.error(f"Error in safe_proxy_operation: {e}")
-            elapsed = time.time() - start_time
+            # در صورت خطا، اگر start_time تعریف نشده باشد، یک مقدار برای آن تعریف می‌کنیم
+            try:
+                elapsed = time.time() - start_time
+            except:
+                elapsed = 0
             self.send_message(
                 chat_id,
                 f"❌ <b>خطا در عملیات پروکسی</b>\n\n"

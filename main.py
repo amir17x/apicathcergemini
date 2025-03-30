@@ -1,278 +1,199 @@
 #!/usr/bin/env python3
 """
-Main entry point for the application.
-This file implements the database configuration and runs the Telegram bot.
+نقطه ورود اصلی برای برنامه.
+این فایل تنظیمات دیتابیس و راه‌اندازی ربات تلگرام را انجام می‌دهد.
+نسخه بهینه‌شده برای Railway با حذف مکانیزم قفل فایل
 """
 
 import os
 import logging
-import sys
-import time
 import threading
+import time
+import requests
 from flask import Flask, request, jsonify
 from telegram_bot_inline import InlineTelegramBot
 from models import db, User, Account
 
-# Initialize Flask app for the API and database
-app = Flask(__name__)
-app.secret_key = os.environ.get("SESSION_SECRET", "a secret key")
+# تنظیم لاگینگ کاربردی
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
-# Configure database
+# اطلاعات شروع برنامه
+logger.info("=" * 50)
+logger.info("TELEGRAM BOT APPLICATION STARTING - RAILWAY OPTIMIZED")
+logger.info("=" * 50)
+
+# ایجاد Flask app برای API و دیتابیس
+app = Flask(__name__)
+app.secret_key = os.environ.get("SESSION_SECRET", "a secure secret key")
+
+# تنظیم دیتابیس
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_recycle": 300,
     "pool_pre_ping": True,
 }
-# Initialize database with app
+# راه‌اندازی دیتابیس با app
 db.init_app(app)
 
-# Create global variable to track bot thread
-_bot_thread = None
+# متغیر سراسری برای ربات تلگرام
+global_bot = None
 
-# Configure logging to file for better debugging
-import os
-from logging.handlers import RotatingFileHandler
-
-# Make sure log file exists and is writable
-log_file = "/tmp/telegram_bot.log"
-try:
-    # Create directory if it doesn't exist
-    os.makedirs(os.path.dirname(log_file), exist_ok=True)
-    # Create empty file if it doesn't exist
-    if not os.path.exists(log_file):
-        with open(log_file, 'w') as f:
-            f.write('')
-    # Test that we can write to it
-    with open(log_file, 'a') as f:
-        f.write('')
-except Exception as e:
-    print(f"WARNING: Cannot create or write to log file: {e}")
-    log_file = None
-
-handlers = [logging.StreamHandler()]  # Always log to console
-if log_file:
-    # Add rotating file handler to avoid large log files
-    file_handler = RotatingFileHandler(
-        log_file, maxBytes=1024*1024*5, backupCount=3
-    )
-    file_handler.setFormatter(logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    ))
-    handlers.append(file_handler)
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=handlers
-)
-logger = logging.getLogger(__name__)
-
-# Log startup information
-logger.info("=" * 50)
-logger.info("TELEGRAM BOT APPLICATION STARTING")
-logger.info("=" * 50)
-
-# Create database tables
+# ایجاد جداول دیتابیس
 with app.app_context():
     try:
         db.create_all()
-        logger.info("Database tables created successfully")
+        logger.info("✅ جداول دیتابیس با موفقیت ایجاد شدند")
     except Exception as e:
-        logger.error(f"Error creating database tables: {e}")
+        logger.error(f"❌ خطا در ایجاد جداول دیتابیس: {e}")
 
-def start_bot_thread():
-    """Start the bot in a separate thread if not already running"""
-    global _bot_thread
+def setup_bot():
+    """ایجاد و راه‌اندازی نمونه ربات تلگرام"""
+    global global_bot
     
-    # اگر ترد قبلی وجود داشته باشد، ابتدا آن را متوقف می‌کنیم
-    if _bot_thread and _bot_thread.is_alive():
-        logger.info(f"🛑 ترد قبلی ربات با شناسه {_bot_thread.ident} در حال اجراست. فعلاً نمونه جدیدی راه‌اندازی نمی‌شود.")
-        return  # اگر ربات در حال اجراست، نمونه جدیدی راه‌اندازی نمی‌کنیم
+    # اگر ربات قبلاً راه‌اندازی شده باشد، فقط وضعیت را گزارش می‌دهیم
+    if global_bot:
+        logger.info("ربات تلگرام قبلاً راه‌اندازی شده است")
+        return global_bot
     
-    # ثبت یک فایل قفل برای جلوگیری از اجرای همزمان چند ربات
-    lock_file = '/tmp/telegram_bot.lock'
+    logger.info("🔄 شروع راه‌اندازی ربات تلگرام")
     
-    # بررسی اینکه آیا قفل قبلی وجود دارد
-    if os.path.exists(lock_file):
-        try:
-            with open(lock_file, 'r') as f:
-                pid = f.read().strip()
-                # بررسی اینکه آیا پروسه قبلی هنوز در حال اجراست
-                try:
-                    os.kill(int(pid), 0)  # سیگنال 0 فقط برای بررسی وجود پروسه است
-                    logger.info(f"🛑 یک نمونه دیگر از ربات با PID {pid} در حال اجراست.")
-                    return
-                except OSError:
-                    # پروسه دیگر وجود ندارد، فایل قفل را حذف می‌کنیم
-                    logger.info(f"🔓 فایل قفل قدیمی متعلق به PID {pid} پیدا شد اما پروسه در حال اجرا نیست. قفل حذف می‌شود.")
-                    os.remove(lock_file)
-        except Exception as e:
-            logger.error(f"❌ خطا در بررسی فایل قفل: {e}")
-            # حذف فایل قفل مشکوک
-            try:
-                os.remove(lock_file)
-            except:
-                pass
+    # دریافت توکن از متغیرهای محیطی
+    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    if not token:
+        logger.error("❌ توکن ربات تلگرام یافت نشد - متغیر محیطی TELEGRAM_BOT_TOKEN تنظیم نشده است")
+        return None
     
-    # ایجاد قفل جدید
     try:
-        with open(lock_file, 'w') as f:
-            f.write(str(os.getpid()))
+        # ساخت نمونه ربات با ارسال Flask app برای دسترسی به دیتابیس
+        bot = InlineTelegramBot(token=token, app=app)
         
-        logger.info("🚀 شروع ربات در یک ترد جداگانه")
-        
-        def bot_runner():
-            try:
-                logger.info("Creating Inline Telegram Bot instance in thread")
-                # تنظیم سطح لاگ به DEBUG برای دریافت اطلاعات بیشتر
-                logging.getLogger().setLevel(logging.DEBUG)
+        # تست اتصال به API تلگرام
+        try:
+            response = requests.get(f"https://api.telegram.org/bot{token}/getMe", timeout=10)
+            if response.status_code == 200 and response.json().get('ok'):
+                bot_info = response.json().get('result', {})
+                logger.info(f"✅ اتصال به ربات برقرار شد: @{bot_info.get('username')} (ID: {bot_info.get('id')})")
                 
-                # ساخت نمونه‌ی ربات با ارسال فلسک اپ برای دسترسی به دیتابیس
-                bot = InlineTelegramBot(app=app)
-                logger.info(f"Bot instance created, token valid: {bool(bot.token)}")
-                
-                # تست اتصال به API تلگرام
+                # پاکسازی آپدیت‌های قبلی برای شروع تمیز
                 try:
-                    import requests
-                    response = requests.get(f"https://api.telegram.org/bot{bot.token}/getMe", timeout=10)
-                    logger.info(f"getMe response: {response.text}")
-                    
-                    # بررسی صحت پاسخ دریافتی
-                    if not response.json().get('ok'):
-                        logger.error(f"Telegram API returned error: {response.text}")
-                        return  # خروج در صورت خطا
-                except Exception as get_me_error:
-                    logger.error(f"getMe error: {get_me_error}")
-                    return  # خروج در صورت خطا در اتصال
-                
-                # حذف آپدیت‌های قبلی برای شروع تمیز
-                try:
-                    logger.info("Getting and clearing previous updates...")
                     response = requests.get(
-                        f"https://api.telegram.org/bot{bot.token}/getUpdates",
-                        params={'offset': -1, 'limit': 1, 'timeout': 1},
+                        f"https://api.telegram.org/bot{token}/getUpdates",
+                        params={'offset': -1, 'limit': 1, 'timeout': 5},
                         timeout=10
                     )
                     if response.json().get('ok') and response.json().get('result'):
                         updates = response.json().get('result')
                         if updates:
-                            # تنظیم آفست به آخرین آپدیت + 1
                             last_update_id = updates[-1]["update_id"]
                             offset = last_update_id + 1
                             # حذف همه‌ی آپدیت‌های قبلی
                             requests.get(
-                                f"https://api.telegram.org/bot{bot.token}/getUpdates",
-                                params={'offset': offset, 'limit': 1, 'timeout': 1},
+                                f"https://api.telegram.org/bot{token}/getUpdates",
+                                params={'offset': offset, 'limit': 1, 'timeout': 5},
                                 timeout=10
                             )
-                            logger.info(f"Cleared all previous updates, set offset to {offset}")
-                except Exception as clear_error:
-                    logger.error(f"Error clearing updates: {clear_error}")
+                            logger.info(f"✅ همه‌ی آپدیت‌های قبلی پاک شدند - تنظیم آفست به {offset}")
+                except Exception as e:
+                    logger.error(f"❌ خطا در پاکسازی آپدیت‌های قبلی: {e}")
                 
-                # اجرای حلقه‌ی اصلی ربات
-                logger.info("Starting bot.run()...")
-                bot.run()
-            except Exception as e:
-                logger.error(f"Bot thread crashed: {e}")
-        
-        _bot_thread = threading.Thread(target=bot_runner, name="InlineTelegramBotThread")
-        _bot_thread.daemon = True
-        _bot_thread.start()
-        logger.info(f"Bot thread started with ID: {_bot_thread.ident}")
+                # تنظیم ربات سراسری
+                global_bot = bot
+                return bot
+            else:
+                logger.error(f"❌ خطا در اتصال به API تلگرام: {response.text}")
+                return None
+        except Exception as e:
+            logger.error(f"❌ خطا در اتصال به API تلگرام: {e}")
+            return None
     except Exception as e:
-        logger.error(f"❌ خطا در راه‌اندازی ربات: {e}")
-        
-    # اگر ترد قبلاً در حال اجرا بود، اعلام می‌کنیم
-    if _bot_thread and _bot_thread.is_alive():
-        logger.info(f"✅ ترد ربات با شناسه {_bot_thread.ident} در حال اجراست.")
+        logger.error(f"❌ خطا در راه‌اندازی ربات تلگرام: {e}")
+        return None
 
-# Define routes for the Flask app
+def start_bot_in_thread():
+    """راه‌اندازی ربات در یک ترد جداگانه"""
+    bot = setup_bot()
+    if not bot:
+        logger.error("❌ ربات راه‌اندازی نشد، ترد شروع نمی‌شود")
+        return
+    
+    def bot_runner():
+        try:
+            logger.info("🚀 شروع حلقه‌ی اصلی ربات")
+            # اجرای حلقه‌ی اصلی ربات
+            bot.run()
+        except Exception as e:
+            logger.error(f"❌ ترد ربات با خطا متوقف شد: {e}")
+    
+    # ایجاد و شروع ترد
+    bot_thread = threading.Thread(target=bot_runner, name="TelegramBotThread")
+    bot_thread.daemon = True  # اجازه می‌دهد برنامه اصلی بدون منتظر ماندن برای ترد، خاتمه یابد
+    bot_thread.start()
+    logger.info(f"✅ ترد ربات با شناسه {bot_thread.ident} شروع به کار کرد")
+
+# مسیرهای Flask برای سلامت‌سنجی
 @app.route('/')
 def index():
-    """Simple health check endpoint"""
-    # Start the bot thread if it's not already running
-    start_bot_thread()
-    return "Telegram bot is running in the background."
+    """مسیر اصلی و سلامت‌سنجی ساده"""
+    # راه‌اندازی ربات اگر هنوز شروع نشده باشد
+    if not global_bot:
+        start_bot_in_thread()
+    return "ربات تلگرام در حال اجراست."
 
 @app.route('/status')
 def status():
-    """Endpoint to check bot status"""
-    try:
-        if _bot_thread and _bot_thread.is_alive():
-            status = "running"
-        else:
-            status = "stopped"
-            # Try to start the bot thread if it's not running
-            start_bot_thread()
-        
-        # Also get database status
-        with app.app_context():
-            try:
-                user_count = User.query.count()
-                account_count = Account.query.count()
-                db_status = "connected"
-            except Exception as e:
-                logger.error(f"Database error in status endpoint: {e}")
-                user_count = 0
-                account_count = 0
-                db_status = f"error: {str(e)}"
-        
-        return jsonify({
-            "bot_status": status,
-            "database_status": db_status,
-            "user_count": user_count,
-            "account_count": account_count,
-            "status": "ok"  # Always include an ok status for healthcheck
-        })
-    except Exception as e:
-        logger.error(f"Error in status endpoint: {e}")
-        # Always return a successful response for healthcheck
-        return jsonify({
-            "status": "ok",
-            "error": str(e)
-        }), 200  # Force 200 response for healthcheck
-
+    """مسیر بررسی وضعیت ربات"""
+    # راه‌اندازی ربات اگر هنوز شروع نشده باشد
+    if not global_bot:
+        start_bot_in_thread()
+    
+    # بررسی وضعیت دیتابیس
+    with app.app_context():
+        try:
+            user_count = User.query.count()
+            account_count = Account.query.count()
+            db_status = "متصل"
+        except Exception as e:
+            logger.error(f"❌ خطا در اتصال به دیتابیس: {e}")
+            user_count = 0
+            account_count = 0
+            db_status = f"خطا: {str(e)}"
+    
+    return jsonify({
+        "bot_status": "در حال اجرا" if global_bot else "متوقف",
+        "database_status": db_status,
+        "user_count": user_count,
+        "account_count": account_count,
+        "status": "ok"
+    })
 
 @app.route('/healthz')
 def healthz():
-    """
-    مسیر سلامت ساده که همیشه کد 200 برمی‌گرداند.
-    Railway از این مسیر برای بررسی سلامت برنامه استفاده می‌کند.
-    """
-    # ساده‌ترین پاسخ ممکن بدون هیچ بررسی اضافی
+    """مسیر سلامت‌سنجی ساده برای Railway"""
     return "OK", 200
 
-# اضافه کردن مسیرهای پشتیبان دیگر برای سلامت‌سنجی
 @app.route('/health')
 def health():
     """مسیر پشتیبان سلامت‌سنجی"""
     return "OK", 200
 
-@app.route('/_health')
-def _health():
-    """مسیر پشتیبان دیگر سلامت‌سنجی"""
-    return "OK", 200
-
 @app.route('/restart', methods=['POST'])
 def restart_bot():
-    """Endpoint to restart the bot thread"""
-    global _bot_thread
-    
-    if _bot_thread and _bot_thread.is_alive():
-        logger.info("Request to restart bot received, but cannot stop thread directly")
-        # We can't really stop the thread safely, but we can start a new one
-        # which will take over on next polling cycle
-        _bot_thread = None
-    
-    start_bot_thread()
-    return jsonify({"status": "Bot thread restart initiated"})
+    """مسیر راه‌اندازی مجدد ربات"""
+    global global_bot
+    global_bot = None  # پاک کردن ربات فعلی
+    start_bot_in_thread()  # راه‌اندازی مجدد
+    return jsonify({"status": "ربات با موفقیت راه‌اندازی مجدد شد"})
 
+# راه‌اندازی ربات در هنگام شروع برنامه
+logger.info("🔄 تلاش برای راه‌اندازی ربات در شروع برنامه")
+start_bot_in_thread()
+
+# اجرای Flask app در حالت مستقل
 if __name__ == "__main__":
-    logger.info("Running as standalone Flask app")
-    # Start the bot thread
-    start_bot_thread()
-    # Get port from environment variable or use default
     port = int(os.environ.get("PORT", 5000))
-    logger.info(f"Starting Flask app on port {port}")
-    # Run the Flask app
-    app.run(host="0.0.0.0", port=port, debug=True)
+    logger.info(f"🌐 شروع وب سرور Flask در پورت {port}")
+    app.run(host="0.0.0.0", port=port)
