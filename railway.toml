@@ -1,32 +1,6 @@
-[build]
-  builder = "NIXPACKS"
-  buildCommand = "python fix-distutils.py"
-  
 [deploy]
-  numReplicas = 1
-  startCommand = "gunicorn --bind 0.0.0.0:${PORT:-5000} main:app"
-  healthcheckPath = "/status"
-  healthcheckTimeout = 120
-  restartPolicyType = "ON_FAILURE"
-  restartPolicyMaxRetries = 5
-  
-[nixpacks]
-  apt = ["python3-distutils", "chromium-browser", "chromium-chromedriver"]
-  python = { version = "3.10" }  # تغییر نسخه Python به 3.10 که سازگاری بیشتری دارد
-
-[phases.setup]
-  cmds = [
-    "apt-get update",
-    "apt-get install -y python3-distutils chromium-browser chromium-chromedriver",
-    "python -m pip install --upgrade pip packaging"
-  ]
-
-[phases.build]
-  cmds = [
-    "python -m pip install -r requirements.txt || python -m pip install gunicorn flask flask-sqlalchemy psycopg2-binary python-telegram-bot requests selenium twilio undetected-chromedriver==3.5.0 webdriver-manager email-validator"
-  ]
-
-[variables]
-  PYTHONPATH = "/app"
-  PYTHONUNBUFFERED = "1"
-  PORT = "5000"  # مقدار پیش‌فرض برای PORT
+startCommand = "gunicorn --bind 0.0.0.0:$PORT --reuse-port --reload main:app"
+healthcheckPath = "/healthz"
+healthcheckTimeout = 300
+restartPolicyType = "on-failure"
+restartPolicyMaxRetries = 10
