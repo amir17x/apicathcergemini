@@ -1,0 +1,94 @@
+[internal] load build definition from Dockerfile
+
+[internal] load build definition from Dockerfile  ✔ 0ms
+
+[internal] load build definition from Dockerfile
+
+[internal] load build definition from Dockerfile  ✔ 9ms
+
+[internal] load metadata for docker.io/library/python:3.10-slim
+
+[internal] load metadata for docker.io/library/python:3.10-slim  ✔ 719ms
+
+[internal] load .dockerignore
+
+[internal] load .dockerignore
+
+[internal] load .dockerignore  ✔ 0ms
+
+[internal] load .dockerignore
+
+[internal] load .dockerignore  ✔ 10ms
+
+[7/7] RUN pip install --no-cache-dir email-validator flask flask-sqlalchemy gunicorn psycopg2-binary python-telegram-bot requests selenium undetected-chromedriver==3.5.0 webdriver-manager twilio
+
+[6/7] COPY . .
+
+[internal] load build context
+
+[5/7] WORKDIR /app
+
+[4/7] RUN CHROME_DRIVER_VERSION=`curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE`     && wget -N chromedriver.storage.googleapis.com/$CHROME_DRIVER_VERSION/chromedriver_linux64.zip -P ~/     && unzip ~/chromedriver_linux64.zip -d ~/     && rm ~/chromedriver_linux64.zip     && mv -f ~/chromedriver /usr/local/bin/chromedriver     && chmod +x /usr/local/bin/chromedriver
+
+[3/7] RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -     && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list     && apt-get update     && apt-get install -y google-chrome-stable     && rm -rf /var/lib/apt/lists/*
+
+[2/7] RUN apt-get update && apt-get install -y     python3-distutils     wget     gnupg     unzip     curl     && rm -rf /var/lib/apt/lists/*
+
+[1/7] FROM docker.io/library/python:3.10-slim@sha256:06f6d69d229bb55fab83dded514e54eede977e33e92d855ba3f97ce0e3234abc
+
+[1/7] FROM docker.io/library/python:3.10-slim@sha256:06f6d69d229bb55fab83dded514e54eede977e33e92d855ba3f97ce0e3234abc
+
+[internal] load build context  ✔ 0ms
+
+[1/7] FROM docker.io/library/python:3.10-slim@sha256:06f6d69d229bb55fab83dded514e54eede977e33e92d855ba3f97ce0e3234abc  ✔ 5ms
+
+[internal] load build context
+
+[internal] load build context  ✔ 33ms
+
+[2/7] RUN apt-get update && apt-get install -y     python3-distutils     wget     gnupg     unzip     curl     && rm -rf /var/lib/apt/lists/*  ✔ 0ms – CACHED
+
+[3/7] RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -     && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list     && apt-get update     && apt-get install -y google-chrome-stable     && rm -rf /var/lib/apt/lists/*  ✔ 0ms – CACHED
+
+[4/7] RUN CHROME_DRIVER_VERSION=`curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE`     && wget -N chromedriver.storage.googleapis.com/$CHROME_DRIVER_VERSION/chromedriver_linux64.zip -P ~/     && unzip ~/chromedriver_linux64.zip -d ~/     && rm ~/chromedriver_linux64.zip     && mv -f ~/chromedriver /usr/local/bin/chromedriver     && chmod +x /usr/local/bin/chromedriver  ✔ 0ms – CACHED
+
+[5/7] WORKDIR /app  ✔ 0ms – CACHED
+
+[6/7] COPY . .  ✔ 0ms – CACHED
+
+[7/7] RUN pip install --no-cache-dir email-validator flask flask-sqlalchemy gunicorn psycopg2-binary python-telegram-bot requests selenium undetected-chromedriver==3.5.0 webdriver-manager twilio  ✔ 0ms – CACHED
+
+[auth] sharing credentials for asia-southeast1.registry.rlwy.net
+
+[auth] sharing credentials for asia-southeast1.registry.rlwy.net  ✔ 0ms
+
+Build time: 2.70 seconds
+
+ 
+
+====================
+
+Starting Healthcheck
+
+====================
+
+
+Path: /
+
+Retry window: 3m20s
+
+ 
+
+Attempt #1 failed with service unavailable. Continuing to retry for 3m19s
+
+Attempt #2 failed with service unavailable. Continuing to retry for 3m16s
+
+Attempt #3 failed with service unavailable. Continuing to retry for 3m4s
+
+Attempt #4 failed with service unavailable. Continuing to retry for 2m59s
+
+Attempt #5 failed with service unavailable. Continuing to retry for 2m51s
+
+Attempt #6 failed with service unavailable. Continuing to retry for 2m34s
+
+Attempt #7 failed with service unavailable. Continuing to retry for 2m4s

@@ -39,4 +39,4 @@ ENV CHROMEDRIVER_PATH=/usr/local/bin/chromedriver
 ENV PYTHONUNBUFFERED=1
 
 # اجرای سرور
-CMD ["gunicorn", "--bind", "0.0.0.0:$PORT", "main:app"]
+CMD gunicorn --bind 0.0.0.0:${PORT:-5000} main:app

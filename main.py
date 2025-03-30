@@ -222,5 +222,8 @@ if __name__ == "__main__":
     logger.info("Running as standalone Flask app")
     # Start the bot thread
     start_bot_thread()
+    # Get port from environment variable or use default
+    port = int(os.environ.get("PORT", 5000))
+    logger.info(f"Starting Flask app on port {port}")
     # Run the Flask app
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=port, debug=True)
