@@ -1,0 +1,59 @@
+2025-03-30 10:14:16,110 - twilio.http_client - INFO - Response Headers: {'Content-Type': 'application/json;charset=utf-8', 'Content-Length': '531', 'Connection': 'keep-alive', 'Date': 'Sun, 30 Mar 2025 10:14:15 GMT', 'Content-Encoding': 'gzip', 'ETag': 'c107691e17c0a939476ebf8bfd903e46--gzip', 'Last-Modified': 'Sun, 30 Mar 2025 06:27:34 +0000', 'Twilio-Concurrent-Requests': '1', 'Twilio-Request-Id': 'RQa855fad6b267ed775041169cf264bfc3', 'Twilio-Request-Duration': '0.040', 'X-Home-Region': 'us1', 'X-API-Domain': 'api.twilio.com', 'Strict-Transport-Security': 'max-age=31536000', 'Vary': 'Accept-Encoding, Origin', 'X-Cache': 'Miss from cloudfront', 'Via': '1.1 4f69e73d035ca53df184cc57050edd3c.cloudfront.net (CloudFront)', 'X-Amz-Cf-Pop': 'SIN2-P6', 'X-Amz-Cf-Id': 'Hw8Q4vfF3X6NFpyDhMNuOD2EkZZAN47NzImZ2pzLe_b88B4jJn4KFw==', 'X-Powered-By': 'AT-5000', 'X-Shenanigans': 'none'}
+
+2025-03-30 10:14:16,110 - telegram_bot_inline - INFO - Twilio service is available for phone verification
+
+2025-03-30 10:14:16,111 - twilio_integration - INFO - TwilioManager با موفقیت مقداردهی شد.
+
+2025-03-30 10:14:16,111 - twilio_integration - INFO - شماره تلفن پیش‌فرض Twilio پیکربندی شده است: +18575755540
+
+2025-03-30 10:14:16,112 - utils - DEBUG - Generated random user info: {'first_name': 'Jamie', 'last_name': 'Brown', 'username': 'jamie_brown1959', 'password': 'Ar-JRDgfh6lvXc^', 'birth_day': '19', 'birth_month': 'April', 'birth_year': '1999', 'gender': 'Female'}
+
+2025-03-30 10:14:16,123 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+
+2025-03-30 10:14:16,649 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "POST /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/sendMessage HTTP/1.1" 200 1038
+
+2025-03-30 10:14:16 | telegram_bot_inline | ✨ INFO | Starting Gmail account creation for user 7940304990
+
+2025-03-30 10:14:16,650 - telegram_bot_inline - INFO - Starting Gmail account creation for user 7940304990
+
+2025-03-30 10:14:16,651 - gmail_creator - INFO - Starting Gmail account creation for jamie_brown1959@gmail.com
+
+2025-03-30 10:14:16,651 - gmail_creator - INFO - Name: Jamie Brown, Birthday: 19/April/1999, Gender: Female
+
+2025-03-30 10:14:16,651 - gmail_creator - INFO - Using proxy: {'host': '43.135.164.4', 'port': '13001', 'username': '', 'password': '', 'type': 'http'}
+
+2025-03-30 10:14:16,651 - gmail_creator - INFO - Initializing undetected-chromedriver with custom ChromeDriver...
+
+2025-03-30 10:14:16,651 - gmail_creator - INFO - Custom ChromeDriver not found, using default method
+
+2025-03-30 10:14:16,654 - undetected_chromedriver.patcher - DEBUG - getting release number from /LATEST_RELEASE
+
+2025-03-30 10:14:16,738 - gmail_creator - ERROR - Exception during account creation: 'Version' object has no attribute 'version'
+
+2025-03-30 10:14:16,739 - gmail_creator - ERROR - Traceback (most recent call last):
+
+  File "/app/gmail_creator.py", line 93, in create_gmail_account
+
+    driver = uc.Chrome(options=options)
+
+  File "/usr/local/lib/python3.10/site-packages/undetected_chromedriver/__init__.py", line 247, in __init__
+
+    self.patcher.auto()
+
+  File "/usr/local/lib/python3.10/site-packages/undetected_chromedriver/patcher.py", line 159, in auto
+
+    self.version_main = release.version[0]
+
+AttributeError: 'Version' object has no attribute 'version'
+
+ 
+
+2025-03-30 10:14:16,741 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+
+2025-03-30 10:14:17,283 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "POST /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/sendMessage HTTP/1.1" 200 758
+
+2025-03-30 10:14:17,289 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+
+2025-03-30 10:14:17,832 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "POST /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/sendMessage HTTP/1.1" 200 5715
+
+2025-03-30 10:14:17,935 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443

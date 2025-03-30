@@ -10,6 +10,12 @@ import site
 import shutil
 from pathlib import Path
 import time
+import logging
+
+# تنظیم لاگینگ
+logging.basicConfig(level=logging.INFO, 
+                   format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # لاگ ابتدایی برای اطمینان از اجرای این اسکریپت در Railway
 print("=" * 80)
@@ -19,54 +25,116 @@ print(f"Working directory: {os.getcwd()}")
 print(f"Environment variables: PORT={os.environ.get('PORT', 'Not set')}")
 print("=" * 80)
 
-def fix_undetected_chromedriver():
-    """رفع مشکل ماژول undetected_chromedriver با تغییر import distutils به packaging"""
-    try:
-        # پیدا کردن مسیر نصب undetected_chromedriver
-        site_packages = site.getsitepackages()[0]
-        patcher_path = os.path.join(site_packages, 'undetected_chromedriver', 'patcher.py')
+def find_package_path(package_name):
+    """
+    پیدا کردن مسیر یک پکیج نصب شده.
+    
+    Args:
+        package_name: نام پکیج
         
-        if os.path.exists(patcher_path):
-            print(f"فایل patcher.py در مسیر {patcher_path} پیدا شد")
-            
-            # خواندن محتوای فایل
-            with open(patcher_path, 'r') as f:
-                content = f.read()
+    Returns:
+        Path: مسیر پکیج یا None اگر پیدا نشد
+    """
+    try:
+        # فهرست مسیرهای جستجو
+        search_paths = sys.path + [site.getusersitepackages()] + site.getsitepackages()
+        
+        # جستجو در مسیرها
+        for search_path in search_paths:
+            path = Path(search_path) / package_name
+            if path.exists() and path.is_dir():
+                return path
+        
+        return None
+    except Exception as e:
+        logger.error(f"خطا در جستجوی پکیج {package_name}: {e}")
+        return None
+
+def fix_undetected_chromedriver():
+    """
+    رفع مشکل 'Version' object has no attribute 'version' در undetected-chromedriver.
+    
+    Returns:
+        bool: وضعیت موفقیت
+    """
+    try:
+        logger.info("در حال جستجوی پکیج undetected-chromedriver...")
+        package_path = find_package_path("undetected_chromedriver")
+        
+        if not package_path:
+            logger.error("پکیج undetected-chromedriver پیدا نشد!")
+            return False
+        
+        logger.info(f"پکیج undetected-chromedriver در مسیر {package_path} پیدا شد.")
+        
+        # مسیر فایل patcher.py
+        patcher_file = package_path / "patcher.py"
+        
+        if not patcher_file.exists():
+            logger.error(f"فایل patcher.py در مسیر {package_path} پیدا نشد!")
+            return False
+        
+        logger.info(f"فایل patcher.py در مسیر {patcher_file} پیدا شد.")
+        
+        # ایجاد نسخه پشتیبان
+        backup_file = patcher_file.with_suffix('.py.bak')
+        if not backup_file.exists():
+            shutil.copy2(patcher_file, backup_file)
+            logger.info(f"نسخه پشتیبان در {backup_file} ایجاد شد.")
+        
+        # خواندن محتوای فایل
+        with open(patcher_file, 'r') as file:
+            content = file.read()
+        
+        # بررسی و اصلاح محتوا
+        changes_made = False
+        
+        if "from distutils.version import LooseVersion" in content:
+            logger.info("در حال اصلاح import distutils.version...")
             
             # جایگزینی import
-            if 'from distutils.version import LooseVersion' in content:
-                content = content.replace(
-                    'from distutils.version import LooseVersion',
-                    'from packaging.version import parse as LooseVersion'
-                )
-                
-                # ذخیره فایل اصلاح شده
-                with open(patcher_path, 'w') as f:
-                    f.write(content)
-                    
-                print("فایل patcher.py با موفقیت اصلاح شد!")
-                return True
-            else:
-                print("الگوی مورد نظر در فایل پیدا نشد")
+            content = content.replace(
+                "from distutils.version import LooseVersion",
+                "from packaging.version import parse as LooseVersion  # Fixed import"
+            )
+            changes_made = True
+        
+        # تغییر کد مربوط به version_main
+        if "self.version_main = release.version[0]" in content:
+            logger.info("در حال اصلاح کد استخراج version_main...")
+            
+            content = content.replace(
+                "self.version_main = release.version[0]",
+                "self.version_main = int(str(release).split('.')[0])  # Fixed version extraction"
+            )
+            changes_made = True
+            
+        if changes_made:
+            # نوشتن محتوای جدید
+            with open(patcher_file, 'w') as file:
+                file.write(content)
+            
+            logger.info("فایل patcher.py با موفقیت اصلاح شد!")
+            return True
         else:
-            print(f"فایل patcher.py در مسیر {patcher_path} پیدا نشد")
-    
+            logger.warning("الگوی مورد انتظار در فایل patcher.py پیدا نشد. ممکن است فایل قبلاً اصلاح شده باشد.")
+            return False
+        
     except Exception as e:
-        print(f"خطا در اصلاح فایل: {str(e)}")
-    
-    return False
+        logger.error(f"خطا در اصلاح undetected-chromedriver: {e}")
+        return False
 
 def install_required_packages():
     """نصب پکیج‌های مورد نیاز"""
-    packages = ['packaging']
+    packages = ['packaging', 'undetected-chromedriver']
     
     for package in packages:
         try:
-            print(f"در حال نصب {package}...")
+            logger.info(f"در حال نصب پکیج {package}...")
             subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
-            print(f"{package} با موفقیت نصب شد!")
+            logger.info(f"پکیج {package} با موفقیت نصب شد.")
         except Exception as e:
-            print(f"خطا در نصب {package}: {str(e)}")
+            logger.error(f"خطا در نصب پکیج {package}: {e}")
 
 def copy_custom_patcher():
     """کپی کردن فایل patcher.py سفارشی به مسیر مورد نظر"""
@@ -76,24 +144,29 @@ def copy_custom_patcher():
         
         if os.path.exists(custom_patcher):
             # پیدا کردن مسیر نصب undetected_chromedriver
-            site_packages = site.getsitepackages()[0]
-            destination = os.path.join(site_packages, 'undetected_chromedriver', 'patcher.py')
+            package_path = find_package_path("undetected_chromedriver")
+            if not package_path:
+                logger.error("پکیج undetected-chromedriver پیدا نشد!")
+                return False
+                
+            destination = package_path / "patcher.py"
             
             # ساخت نسخه پشتیبان
-            if os.path.exists(destination):
-                backup = destination + '.bak'
-                shutil.copy2(destination, backup)
-                print(f"نسخه پشتیبان در {backup} ذخیره شد")
+            if destination.exists():
+                backup = destination.with_suffix('.py.bak')
+                if not backup.exists():
+                    shutil.copy2(destination, backup)
+                    logger.info(f"نسخه پشتیبان در {backup} ذخیره شد")
             
             # کپی فایل سفارشی
             shutil.copy2(custom_patcher, destination)
-            print(f"فایل patcher.py سفارشی با موفقیت به {destination} کپی شد")
+            logger.info(f"فایل patcher.py سفارشی با موفقیت به {destination} کپی شد")
             return True
         else:
-            print("فایل patcher.py سفارشی پیدا نشد")
+            logger.warning("فایل patcher.py سفارشی پیدا نشد")
     
     except Exception as e:
-        print(f"خطا در کپی فایل سفارشی: {str(e)}")
+        logger.error(f"خطا در کپی فایل سفارشی: {e}")
     
     return False
 

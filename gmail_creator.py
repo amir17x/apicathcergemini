@@ -4,6 +4,7 @@ import random
 import os
 import re
 import traceback
+import sys
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
@@ -11,8 +12,66 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException
-import undetected_chromedriver as uc
 from webdriver_manager.chrome import ChromeDriverManager
+
+# استفاده از ماژول آماده‌سازی کروم
+try:
+    from prepare_chrome import prepare_chrome_driver
+    PREPARE_CHROME_AVAILABLE = True
+except ImportError:
+    PREPARE_CHROME_AVAILABLE = False
+    # روش قدیمی - فقط در صورتی که ماژول جدید در دسترس نباشد
+    try:
+        from monkey_patch import monkey_patch_distutils
+        monkey_patch_distutils()
+    except ImportError:
+        logging.warning("ماژول monkey_patch پیدا نشد. ممکن است با خطا مواجه شوید.")
+
+# حالا undetected_chromedriver را import کنیم
+import undetected_chromedriver as uc
+
+def create_uc_driver_with_version_fix(options):
+    """
+    ایجاد یک نمونه از درایور undetected_chromedriver با رفع مشکل نسخه.
+    این تابع مشکل 'Version' object has no attribute 'version' را رفع می‌کند.
+    
+    Args:
+        options: تنظیمات مربوط به ChromeOptions
+        
+    Returns:
+        uc.Chrome: یک نمونه از درایور Chrome
+    """
+    if PREPARE_CHROME_AVAILABLE:
+        # استفاده از ماژول آماده‌سازی جدید
+        return prepare_chrome_driver(
+            headless=options._arguments.count("--headless") > 0,
+            proxy=None  # پروکسی قبلاً در options تنظیم شده است
+        )
+    
+    logging.info("Using version fix for undetected_chromedriver...")
+    
+    # ساخت یک نمونه از patcher بدون استفاده از auto()
+    try:
+        # ایجاد پچر بدون فراخوانی auto
+        chrome_instance = uc.Chrome(options=options, enable_cdp_events=True, headless=options._arguments.count("--headless") > 0, use_subprocess=True)
+        logging.info("Successfully created ChromeDriver with version fix!")
+        return chrome_instance
+    except Exception as e:
+        logging.error(f"Failed to create driver with version fix: {e}")
+        
+        # روش جایگزین با استفاده از monkey patching پچر
+        try:
+            # دسترسی به پچر و تنظیم دستی version_main
+            uc_patcher = uc.patcher.Patcher()
+            # تنظیم دستی نسخه
+            uc_patcher.version_main = 123  # مقدار دلخواه
+            # ساخت دستی مسیر درایور
+            chrome_instance = uc.Chrome(options=options, patcher=uc_patcher)
+            logging.info("Successfully created ChromeDriver with manual patcher!")
+            return chrome_instance
+        except Exception as sub_e:
+            logging.error(f"Failed with manual patcher too: {sub_e}")
+            raise RuntimeError("Could not initialize ChromeDriver with any method") from sub_e
 
 # ایمپورت ماژول حل CAPTCHA
 try:
@@ -82,15 +141,47 @@ def create_gmail_account(first_name, last_name, username, password, birth_day, b
         
         # Initialize the driver with our custom ChromeDriver
         logger.info("Initializing undetected-chromedriver with custom ChromeDriver...")
-        # Set ChromeDriver path from ~/bin if it exists
-        chromedriver_path = os.path.expanduser("~/bin/chromedriver")
-        if os.path.exists(chromedriver_path):
-            logger.info(f"Using custom ChromeDriver from {chromedriver_path}")
-            driver = uc.Chrome(driver_executable_path=chromedriver_path, options=options)
-        else:
-            # Fallback to default method
-            logger.info("Custom ChromeDriver not found, using default method")
-            driver = uc.Chrome(options=options)
+        
+        # تلاش برای ایجاد driver با مدیریت خطاهای مختلف
+        try:
+            # روش اول: استفاده از نصب مستقیم درایور سفارشی
+            chromedriver_path = os.path.expanduser("~/bin/chromedriver")
+            if os.path.exists(chromedriver_path):
+                logger.info(f"Using custom ChromeDriver from {chromedriver_path}")
+                try:
+                    driver = uc.Chrome(driver_executable_path=chromedriver_path, options=options)
+                    logger.info("ChromeDriver successfully initialized with custom driver!")
+                except Exception as e1:
+                    logger.warning(f"Error using custom ChromeDriver: {e1}")
+                    logger.info("Trying alternative method...")
+                    
+                    # روش دوم: استفاده از روش پیش‌فرض
+                    try:
+                        driver = uc.Chrome(options=options, use_subprocess=True)
+                        logger.info("ChromeDriver successfully initialized with use_subprocess=True!")
+                    except Exception as e2:
+                        logger.warning(f"Error using default method with subprocess: {e2}")
+                        
+                        # روش سوم: استفاده از یک ویژگی خاص برای رفع مشکل نسخه
+                        logger.info("Trying to fix version issue...")
+                        # کدنویسی دستی تابع version_main برای حل مشکل
+                        driver = create_uc_driver_with_version_fix(options)
+            else:
+                # ChromeDriver سفارشی پیدا نشد، استفاده از روش پیش‌فرض
+                logger.info("Custom ChromeDriver not found, using default method")
+                try:
+                    driver = uc.Chrome(options=options, use_subprocess=True)
+                    logger.info("ChromeDriver successfully initialized!")
+                except Exception as e:
+                    logger.warning(f"Error using default method: {e}")
+                    # استفاده از روش سوم در صورت شکست
+                    logger.info("Trying to fix version issue...")
+                    driver = create_uc_driver_with_version_fix(options)
+                    
+        except Exception as e:
+            # خطا در تمام روش‌ها
+            logger.error(f"Failed to initialize ChromeDriver: {e}")
+            raise
         
         # Set default wait time
         wait = WebDriverWait(driver, 15)

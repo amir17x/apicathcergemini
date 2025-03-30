@@ -18,10 +18,13 @@ def monkey_patch_distutils():
     اضافه کردن یک ماژول distutils مجازی به sys.modules برای جلوگیری از خطای ImportError.
     این روش مخصوصاً برای patcher.py در undetected-chromedriver مفید است.
     """
-    # بررسی اینکه آیا قبلاً distutils نصب شده است یا نه
+    # همیشه ماژول‌ها را بازنویسی کنیم (حتی اگر قبلاً بارگذاری شده باشند)
     if "distutils" in sys.modules:
-        logger.info("ماژول distutils قبلاً بارگذاری شده است.")
-        return
+        # حذف ماژول قبلی
+        del sys.modules["distutils"]
+        if "distutils.version" in sys.modules:
+            del sys.modules["distutils.version"]
+        logger.info("ماژول‌های distutils قبلی حذف شدند و بازسازی می‌شوند.")
     
     logger.info("در حال پچ کردن ماژول distutils...")
     
@@ -55,15 +58,27 @@ def monkey_patch_distutils():
         # تعریف LooseVersion با استفاده از packaging.version.parse
         from packaging.version import parse
         
-        class LooseVersion(parse):
+        class LooseVersion:
             """
             پیاده‌سازی مجازی LooseVersion با استفاده از packaging.version.parse
             این کلاس API مشابه distutils.version.LooseVersion را شبیه‌سازی می‌کند.
             """
             def __init__(self, vstring):
                 self.vstring = vstring
-                self.parse = lambda: parse(vstring)
+                self._parse = parse(vstring)
+                self.version = self._get_version_tuple()
             
+            def _get_version_tuple(self):
+                """تبدیل نسخه به tuple برای برطرف کردن مشکل version"""
+                try:
+                    # تلاش برای استخراج اجزای نسخه
+                    version_parts = self.vstring.split('.')
+                    # تبدیل اجزا به عدد در صورت امکان
+                    version_parts = [int(part) if part.isdigit() else part for part in version_parts]
+                    return version_parts
+                except:
+                    return [0]  # مقدار پیش‌فرض در صورت خطا
+                
             def __str__(self):
                 return self.vstring
             
