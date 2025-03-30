@@ -6,6 +6,7 @@
 """
 
 import os
+import sys
 import logging
 import threading
 import time
@@ -14,10 +15,11 @@ from flask import Flask, request, jsonify
 from telegram_bot_inline import InlineTelegramBot
 from models import db, User, Account
 
-# تنظیم لاگینگ کاربردی
+# تنظیم لاگینگ کاربردی برای سازگاری با Railway
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    stream=sys.stdout  # ارسال لاگ ها به stdout برای مشاهده در Railway
 )
 logger = logging.getLogger(__name__)
 
@@ -187,6 +189,99 @@ def restart_bot():
     global_bot = None  # پاک کردن ربات فعلی
     start_bot_in_thread()  # راه‌اندازی مجدد
     return jsonify({"status": "ربات با موفقیت راه‌اندازی مجدد شد"})
+
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    """دریافت آپدیت‌های تلگرام از طریق webhook"""
+    if request.method == 'POST':
+        try:
+            update = request.get_json()
+            logger.info(f"Webhook received: {update}")
+            
+            # راه‌اندازی ربات اگر هنوز شروع نشده باشد
+            if not global_bot:
+                start_bot_in_thread()
+                
+            if global_bot:
+                # ارسال آپدیت به ربات برای پردازش
+                global_bot.handle_updates([update])
+            
+            return jsonify({"status": "ok"})
+        except Exception as e:
+            logger.error(f"Error in webhook handler: {e}")
+            return jsonify({"status": "error", "message": str(e)})
+    
+    return jsonify({"status": "ok"})
+
+@app.route('/set_webhook')
+def set_webhook():
+    """تنظیم وبهوک تلگرام برای Railway"""
+    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    if not token:
+        return jsonify({"status": "error", "message": "No bot token found"})
+    
+    # آدرس سرویس Railway را از محیط دریافت می‌کنیم
+    railway_url = os.environ.get("RAILWAY_STATIC_URL")
+    if not railway_url:
+        railway_url = os.environ.get("RAILWAY_PUBLIC_DOMAIN")
+    
+    if not railway_url:
+        # تلاش برای استفاده از آدرس درخواست فعلی
+        host = request.host
+        if host:
+            railway_url = host
+        else:
+            return jsonify({"status": "error", "message": "Railway URL not found"})
+    
+    webhook_url = f"https://{railway_url}/webhook"
+    logger.info(f"Setting webhook to: {webhook_url}")
+    
+    try:
+        # ابتدا حذف تنظیمات webhook قبلی
+        requests.get(f"https://api.telegram.org/bot{token}/deleteWebhook")
+        
+        # تنظیم webhook جدید
+        response = requests.get(
+            f"https://api.telegram.org/bot{token}/setWebhook",
+            params={"url": webhook_url}
+        )
+        
+        # بررسی وضعیت فعلی webhook
+        status_response = requests.get(f"https://api.telegram.org/bot{token}/getWebhookInfo")
+        
+        return jsonify({
+            "status": "ok", 
+            "response": response.json(),
+            "webhook_info": status_response.json(),
+            "webhook_url": webhook_url
+        })
+    except Exception as e:
+        logger.error(f"Error setting webhook: {e}")
+        return jsonify({"status": "error", "message": str(e)})
+
+@app.route('/remove_webhook')
+def remove_webhook():
+    """حذف وبهوک تلگرام و استفاده از روش long polling"""
+    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    if not token:
+        return jsonify({"status": "error", "message": "No bot token found"})
+    
+    try:
+        response = requests.get(f"https://api.telegram.org/bot{token}/deleteWebhook")
+        
+        # راه‌اندازی مجدد ربات با حالت long polling
+        global global_bot
+        global_bot = None  # پاک کردن ربات فعلی
+        start_bot_in_thread()  # راه‌اندازی مجدد
+        
+        return jsonify({
+            "status": "ok", 
+            "response": response.json(),
+            "message": "Webhook removed, bot started in long polling mode"
+        })
+    except Exception as e:
+        logger.error(f"Error removing webhook: {e}")
+        return jsonify({"status": "error", "message": str(e)})
 
 # راه‌اندازی ربات در هنگام شروع برنامه
 logger.info("🔄 تلاش برای راه‌اندازی ربات در شروع برنامه")

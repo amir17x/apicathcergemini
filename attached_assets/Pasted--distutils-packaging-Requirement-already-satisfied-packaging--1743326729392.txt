@@ -1,0 +1,85 @@
+شروع اصلاح مشکل distutils...
+
+در حال نصب packaging...
+
+Requirement already satisfied: packaging in /usr/local/lib/python3.10/site-packages (24.2)
+
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv
+
+ 
+
+[notice] A new release of pip is available: 23.0.1 -> 25.0.1
+
+[notice] To update, run: pip install --upgrade pip
+
+packaging با موفقیت نصب شد!
+
+فایل patcher.py در مسیر /usr/local/lib/python3.10/site-packages/undetected_chromedriver/patcher.py پیدا شد
+
+فایل patcher.py با موفقیت اصلاح شد!
+
+اصلاح با موفقیت انجام شد!
+
+[2025-03-30 09:24:48 +0000] [6] [INFO] Starting gunicorn 23.0.0
+
+[2025-03-30 09:24:48 +0000] [6] [INFO] Listening at: http://0.0.0.0:8080 (6)
+
+[2025-03-30 09:24:48 +0000] [6] [INFO] Using worker: gthread
+
+[2025-03-30 09:24:48 +0000] [7] [INFO] Booting worker with pid: 7
+
+2025-03-30 09:24:48,983 - main - INFO - ==================================================
+
+2025-03-30 09:24:48,983 - main - INFO - TELEGRAM BOT APPLICATION STARTING - RAILWAY OPTIMIZED
+
+2025-03-30 09:24:48,983 - main - INFO - ==================================================
+
+2025-03-30 09:24:55,408 - main - INFO - ✅ جداول دیتابیس با موفقیت ایجاد شدند
+
+2025-03-30 09:24:55,413 - main - INFO - 🔄 تلاش برای راه‌اندازی ربات در شروع برنامه
+
+2025-03-30 09:24:55,413 - main - INFO - 🔄 شروع راه‌اندازی ربات تلگرام
+
+2025-03-30 09:24:55,413 - telegram_bot_inline - INFO - Database models imported successfully
+
+2025-03-30 09:24:55,418 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+
+2025-03-30 09:24:55,928 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getMe HTTP/1.1" 200 255
+
+2025-03-30 09:24:55,929 - main - INFO - ✅ اتصال به ربات برقرار شد: @apigeminiprobot (ID: 7877987201)
+
+2025-03-30 09:24:55,933 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+
+2025-03-30 09:24:59,884 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=-1&limit=1&timeout=5 HTTP/1.1" 409 143
+
+2025-03-30 09:24:59,887 - main - INFO - 🚀 شروع حلقه‌ی اصلی ربات
+
+2025-03-30 09:24:59,888 - main - INFO - ✅ ترد ربات با شناسه 140443933210304 شروع به کار کرد
+
+2025-03-30 09:24:59,887 - telegram_bot_inline - INFO - Starting bot polling with robust error handling...
+
+2025-03-30 09:24:59,894 - telegram_bot_inline - INFO - Bot token available and valid: True
+
+2025-03-30 09:24:59,897 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+
+2025-03-30 09:25:00,388 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getMe HTTP/1.1" 200 255
+
+2025-03-30 09:25:00,389 - telegram_bot_inline - INFO - ✅ Connected to bot: @apigeminiprobot (ID: 7877987201)
+
+2025-03-30 09:25:00,389 - telegram_bot_inline - INFO - Clearing all previous updates directly via API...
+
+2025-03-30 09:25:00,392 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+
+2025-03-30 09:25:04,342 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=-1&timeout=1 HTTP/1.1" 409 143
+
+2025-03-30 09:25:04,343 - telegram_bot_inline - ERROR - Failed to clear updates: {"ok":false,"error_code":409,"description":"Conflict: terminated by other getUpdates request; make sure that only one bot instance is running"}
+
+2025-03-30 09:25:04,343 - telegram_bot_inline - INFO - 🔄 Entering main polling loop...
+
+2025-03-30 09:25:04,346 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+
+2025-03-30 09:25:09,711 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=0&timeout=30&allowed_updates=%5B%22message%22%2C+%22edited_message%22%2C+%22callback_query%22%5D HTTP/1.1" 409 143
+
+2025-03-30 09:25:09,816 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+
+2025-03-30 09:25:10,304 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=0&timeout=30&allowed_updates=%5B%22message%22%2C+%22edited_message%22%2C+%22callback_query%22%5D HTTP/1.1" 200 351
