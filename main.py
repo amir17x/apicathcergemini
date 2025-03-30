@@ -2,8 +2,59 @@
 """
 ✨ نقطه ورود اصلی برای برنامه ✨
 این فایل تنظیمات دیتابیس و راه‌اندازی ربات تلگرام را انجام می‌دهد.
-نسخه بهینه‌شده برای Railway با مکانیزم قفل فایل
+نسخه بهینه‌شده برای Railway با مکانیزم قفل فایل و پاکسازی کامل
 """
+
+# بلوک پاکسازی - اجرای تمیز کننده در ابتدای کار برنامه
+import os
+import signal
+import psutil
+import sys
+
+def perform_initial_cleanup():
+    """پاکسازی اولیه همه فرآیندهای تلگرام قبل از شروع برنامه"""
+    print("🧹 انجام پاکسازی اولیه...")
+    
+    # 1. کشتن فرآیندهای تلگرام قبلی
+    current_pid = os.getpid()
+    killed_count = 0
+    
+    for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+        try:
+            if proc.pid != current_pid:
+                cmdline = " ".join(proc.info['cmdline'] or []).lower()
+                if any(keyword in cmdline for keyword in ['telegram', 'getupdate', 'bot']):
+                    print(f"🔪 کشتن فرآیند با PID {proc.pid}")
+                    try:
+                        os.kill(proc.pid, signal.SIGKILL)
+                        killed_count += 1
+                    except Exception as e:
+                        print(f"⚠️ خطا در کشتن فرآیند {proc.pid}: {e}")
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            pass
+    
+    print(f"✅ {killed_count} فرآیند مرتبط با تلگرام کشته شد")
+    
+    # 2. پاکسازی فایل‌های قفل
+    lock_files = [
+        "/tmp/telegram_bot.lock",
+        "./telegram_bot.lock",
+        "/tmp/bot_instance.lock",
+        "./bot_instance.lock"
+    ]
+    
+    for lock_file in lock_files:
+        try:
+            if os.path.exists(lock_file):
+                os.remove(lock_file)
+                print(f"✅ فایل قفل {lock_file} حذف شد")
+        except Exception as e:
+            print(f"⚠️ خطا در حذف فایل قفل {lock_file}: {e}")
+    
+    print("✅ پاکسازی اولیه با موفقیت انجام شد")
+
+# اجرای پاکسازی اولیه در ابتدای برنامه
+perform_initial_cleanup()
 
 import os
 import sys
@@ -450,6 +501,19 @@ def run_bot_with_lock():
     return result
 
 # اجرای تابع راه‌اندازی با مکانیزم قفل فایل
+# ابتدا سعی می‌کنیم همه اتصالات تلگرام را پاکسازی کنیم
+try:
+    from force_reset_telegram import TelegramEmergencyReset
+    reset_tool = TelegramEmergencyReset()
+    reset_tool.delete_webhook(drop_pending_updates=True)
+    reset_tool.force_reset_with_api()
+    logger.info("✅ پاکسازی اتصالات تلگرام با موفقیت انجام شد")
+    # کمی صبر می‌کنیم تا همه تغییرات اعمال شوند
+    time.sleep(5)
+except Exception as reset_error:
+    logger.error(f"❌ خطا در پاکسازی اتصالات تلگرام: {reset_error}")
+
+# حالا با مکانیزم قفل فایل اجرا می‌کنیم
 try:
     run_bot_with_lock()
 except Exception as e:
@@ -457,6 +521,13 @@ except Exception as e:
     # در صورت خطا، تلاش برای راه‌اندازی به روش معمولی
     try:
         logger.info("🔄 تلاش برای راه‌اندازی به روش معمولی...")
+        # قبل از راه‌اندازی، حداقل وبهوک را حذف می‌کنیم
+        token = os.environ.get("TELEGRAM_BOT_TOKEN")
+        if token:
+            requests.post(f"https://api.telegram.org/bot{token}/deleteWebhook", json={'drop_pending_updates': True}, timeout=10)
+            logger.info("✅ وبهوک با موفقیت حذف شد")
+            # کمی صبر می‌کنیم
+            time.sleep(2)
         start_bot_in_thread()
     except Exception as fallback_error:
         logger.critical(f"❌ خطای بحرانی در راه‌اندازی ربات: {fallback_error}")
