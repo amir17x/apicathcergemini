@@ -39,6 +39,15 @@ class InlineTelegramBot:
         self.user_data = {}  # Cache for user data during runtime
         self.app = app  # Flask app for context
         
+        # تنظیم حالت webhook بر اساس متغیر محیطی
+        self.webhook_mode = os.environ.get("BOT_MODE", "").lower() == "webhook"
+        logger.info(f"🚀 راه‌اندازی ربات در حالت {'webhook' if self.webhook_mode else 'long polling'}")
+        
+        # بررسی محیط
+        self.is_railway = "RAILWAY_ENVIRONMENT" in os.environ or "RAILWAY_SERVICE_ID" in os.environ
+        if self.is_railway:
+            logger.info("🚂 شناسایی محیط Railway")
+        
         # Try to import database models
         try:
             from models import db, User, Account
@@ -72,6 +81,20 @@ class InlineTelegramBot:
                 if updates:
                     self.offset = updates[-1]['update_id'] + 1
                 return updates
+            elif not data.get('ok') and data.get('error_code') == 409:
+                # خطای 409: یک نمونه دیگر از ربات در حال اجراست
+                logger.error(f"Error 409 in getUpdates: {data.get('description')}")
+                
+                # تلاش برای رفع مشکل با بستن اتصال
+                try:
+                    close_response = requests.post(f"{self.base_url}/close", timeout=10)
+                    if close_response.status_code == 200:
+                        logger.info("✅ Successfully closed bot connection")
+                    time.sleep(2)  # صبر می‌کنیم تا اتصال بسته شود
+                except Exception as close_error:
+                    logger.error(f"Error closing bot connection: {close_error}")
+                
+                return []
             return []
         except Exception as e:
             logger.error(f"Error getting updates: {e}")
@@ -773,12 +796,14 @@ class InlineTelegramBot:
             proxy_list: لیست پروکسی‌ها (اختیاری)
             proxy_text: متن حاوی پروکسی‌ها (اختیاری)
         """
+        # تنظیم زمان شروع قبل از بلوک try تا در exception هم در دسترس باشد
+        start_time = time.time()  # زمان شروع عملیات
+        
         try:
             import proxy_manager
             
             # تنظیم تایم‌اوت برای کل عملیات - کاهش به 20 ثانیه
             max_operation_time = 20  # حداکثر 20 ثانیه برای کل عملیات
-            start_time = time.time()  # زمان شروع عملیات
             
             # دریافت پروکسی بر اساس نوع درخواست
             if api_url:
@@ -905,8 +930,8 @@ class InlineTelegramBot:
             # در صورت خطا، اگر start_time تعریف نشده باشد، یک مقدار برای آن تعریف می‌کنیم
             try:
                 elapsed = time.time() - start_time
-            except:
-                elapsed = 0
+            except NameError:
+                elapsed = 0  # اگر متغیر تعریف نشده باشد
             self.send_message(
                 chat_id,
                 f"❌ <b>خطا در عملیات پروکسی</b>\n\n"
@@ -1678,6 +1703,49 @@ class InlineTelegramBot:
     
     def run(self):
         """حلقه اصلی بهبودیافته برای دریافت پیام‌های تلگرام با مقاوم‌سازی بیشتر."""
+        # اگر در حالت webhook هستیم، اجرای long polling را متوقف می‌کنیم
+        if self.webhook_mode:
+            logger.info("🌐 ربات در حالت webhook آماده است. Long polling اجرا نمی‌شود.")
+            
+            # قبل از بازگشت، اطمینان حاصل می‌کنیم که webhook به درستی تنظیم شده است
+            if self.is_railway:
+                railway_url = os.environ.get("RAILWAY_STATIC_URL") or os.environ.get("RAILWAY_PUBLIC_DOMAIN")
+                if railway_url:
+                    webhook_url = f"https://{railway_url}/webhook"
+                    logger.info(f"🔄 بررسی تنظیمات webhook برای آدرس {webhook_url}...")
+                    
+                    try:
+                        # بررسی وضعیت فعلی webhook
+                        response = requests.get(f"{self.base_url}/getWebhookInfo", timeout=10)
+                        
+                        if response.status_code == 200 and response.json().get("ok"):
+                            webhook_info = response.json().get("result", {})
+                            current_url = webhook_info.get("url", "")
+                            
+                            if current_url == webhook_url:
+                                logger.info(f"✅ Webhook قبلاً به آدرس {webhook_url} تنظیم شده است")
+                            else:
+                                logger.info(f"🔄 تنظیم webhook به آدرس {webhook_url}...")
+                                
+                                # تنظیم webhook جدید
+                                response = requests.get(
+                                    f"{self.base_url}/setWebhook", 
+                                    params={
+                                        "url": webhook_url,
+                                        "allowed_updates": json.dumps(["message", "edited_message", "callback_query"])
+                                    },
+                                    timeout=10
+                                )
+                                
+                                if response.status_code == 200 and response.json().get("ok"):
+                                    logger.info(f"✅ Webhook با موفقیت به آدرس {webhook_url} تنظیم شد")
+                                else:
+                                    logger.error(f"❌ خطا در تنظیم webhook: {response.text}")
+                    except Exception as e:
+                        logger.error(f"❌ خطا در بررسی یا تنظیم webhook: {e}")
+            
+            return
+            
         logger.info("Starting bot polling with robust error handling...")
         logger.info(f"Bot token available and valid: {bool(self.token)}")
         
@@ -1713,6 +1781,20 @@ class InlineTelegramBot:
         # پاکسازی آپدیت‌های قبلی با استفاده از درخواست مستقیم به API
         try:
             logger.info("Clearing all previous updates directly via API...")
+            
+            # ابتدا سعی می‌کنیم با متد deleteWebhook و تنظیم drop_pending_updates=True
+            # همه آپدیت‌های در انتظار را حذف کنیم - این روش معمولاً مؤثرتر است
+            webhook_delete_response = requests.post(
+                f"{self.base_url}/deleteWebhook",
+                json={'drop_pending_updates': True},
+                timeout=10
+            )
+            
+            if webhook_delete_response.status_code == 200 and webhook_delete_response.json().get('ok'):
+                logger.info("✅ Successfully deleted webhook and cleared pending updates")
+                time.sleep(2)  # کمی صبر می‌کنیم تا تغییرات اعمال شود
+            
+            # حالا با getUpdates هم تلاش می‌کنیم
             clear_response = requests.get(
                 f"{self.base_url}/getUpdates",
                 params={'offset': -1, 'timeout': 1},
@@ -1737,9 +1819,25 @@ class InlineTelegramBot:
                         self.offset = clear_offset
                         logger.info(f"✅ Successfully cleared all previous updates. New offset: {clear_offset}")
             else:
-                logger.error(f"Failed to clear updates: {clear_response.text}")
+                # اگر با خطای 409 مواجه شدیم، احتمالاً یک نمونه دیگر از ربات در حال اجراست
+                error_text = clear_response.text if hasattr(clear_response, 'text') else str(clear_response)
+                if "409" in error_text and "Conflict" in error_text:
+                    logger.error(f"Failed to clear updates: {error_text}")
+                    logger.warning("⚠️ Error 409 detected: Another bot instance might be running.")
+                    logger.warning("⚠️ Trying an alternative approach to connect with Telegram API...")
+                    
+                    # تلاش برای بستن اتصال به API تلگرام
+                    try:
+                        close_response = requests.post(f"{self.base_url}/close", timeout=10)
+                        if close_response.status_code == 200:
+                            logger.info("✅ Successfully closed bot connection")
+                            time.sleep(3)  # صبر می‌کنیم تا اتصال کاملاً بسته شود
+                    except Exception as close_error:
+                        logger.error(f"Error closing bot connection: {close_error}")
+                else:
+                    logger.error(f"Failed to clear updates: {error_text}")
         except Exception as e:
-            logger.error(f"Error clearing previous updates: {e}")
+            logger.error(f"Failed to clear updates: {e}")
             # ادامه می‌دهیم حتی اگر پاکسازی با خطا مواجه شود
         
         # حلقه اصلی بهبودیافته برای دریافت پیام‌ها

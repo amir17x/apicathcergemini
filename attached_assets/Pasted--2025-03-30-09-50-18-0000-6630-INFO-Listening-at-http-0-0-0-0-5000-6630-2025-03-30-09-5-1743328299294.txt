@@ -1,0 +1,64 @@
+[2025-03-30 09:50:18 +0000] [6630] [INFO] Listening at: http://0.0.0.0:5000 (6630)
+[2025-03-30 09:50:18 +0000] [6630] [INFO] Using worker: sync
+[2025-03-30 09:50:18 +0000] [6640] [INFO] Booting worker with pid: 6640
+[2025-03-30 09:50:18 +0000] [6630] [INFO] Handling signal: winch
+[2025-03-30 09:50:18 +0000] [6630] [INFO] Handling signal: winch
+[2025-03-30 09:50:18 +0000] [6630] [INFO] Handling signal: winch
+2025-03-30 09:50:18,821 - main - INFO - ==================================================
+2025-03-30 09:50:18,821 - main - INFO - TELEGRAM BOT APPLICATION STARTING - RAILWAY OPTIMIZED
+2025-03-30 09:50:18,821 - main - INFO - ==================================================
+[2025-03-30 09:50:19 +0000] [6630] [INFO] Handling signal: winch
+[2025-03-30 09:50:19 +0000] [6630] [INFO] Handling signal: winch
+[2025-03-30 09:50:19 +0000] [6630] [INFO] Handling signal: winch
+[2025-03-30 09:50:19 +0000] [6630] [INFO] Handling signal: winch
+2025-03-30 09:50:20,338 - main - INFO - ✅ جداول دیتابیس با موفقیت ایجاد شدند
+2025-03-30 09:50:20,341 - main - INFO - 🔄 بررسی وضعیت webhook قبل از راه‌اندازی ربات
+2025-03-30 09:50:20,344 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-03-30 09:50:20,698 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getWebhookInfo HTTP/1.1" 200 151
+2025-03-30 09:50:20,698 - main - INFO - 🔄 Webhook فعال نیست، راه‌اندازی ربات در حالت long polling
+2025-03-30 09:50:20,698 - main - INFO - 🔄 شروع راه‌اندازی ربات تلگرام
+2025-03-30 09:50:20,698 - telegram_bot_inline - INFO - 🚀 راه‌اندازی ربات در حالت long polling
+2025-03-30 09:50:20,698 - telegram_bot_inline - INFO - Database models imported successfully
+2025-03-30 09:50:20,700 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-03-30 09:50:21,052 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getMe HTTP/1.1" 200 255
+2025-03-30 09:50:21,052 - main - INFO - ✅ اتصال به ربات برقرار شد: @apigeminiprobot (ID: 7877987201)
+2025-03-30 09:50:21,053 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-03-30 09:50:25,018 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=-1&limit=1&timeout=5 HTTP/1.1" 409 143
+2025-03-30 09:50:25,019 - main - INFO - 🚀 شروع حلقه‌ی اصلی ربات
+2025-03-30 09:50:25,019 - main - INFO - ✅ ترد ربات با شناسه 140514867279552 شروع به کار کرد
+2025-03-30 09:50:25,019 - telegram_bot_inline - INFO - Starting bot polling with robust error handling...
+2025-03-30 09:50:25,021 - telegram_bot_inline - INFO - Bot token available and valid: True
+2025-03-30 09:50:25,022 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-03-30 09:50:25,377 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getMe HTTP/1.1" 200 255
+2025-03-30 09:50:25,377 - telegram_bot_inline - INFO - ✅ Connected to bot: @apigeminiprobot (ID: 7877987201)
+2025-03-30 09:50:25,377 - telegram_bot_inline - INFO - Clearing all previous updates directly via API...
+2025-03-30 09:50:25,379 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-03-30 09:50:25,733 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "POST /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/deleteWebhook HTTP/1.1" 200 68
+2025-03-30 09:50:25,733 - telegram_bot_inline - INFO - ✅ Successfully deleted webhook and cleared pending updates
+2025-03-30 09:50:27,735 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-03-30 09:50:31,704 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=-1&timeout=1 HTTP/1.1" 409 143
+2025-03-30 09:50:31,704 - telegram_bot_inline - ERROR - Failed to clear updates: {"ok":false,"error_code":409,"description":"Conflict: terminated by other getUpdates request; make sure that only one bot instance is running"}
+2025-03-30 09:50:31,704 - telegram_bot_inline - WARNING - ⚠️ Error 409 detected: Another bot instance might be running.
+2025-03-30 09:50:31,704 - telegram_bot_inline - WARNING - ⚠️ Trying an alternative approach to connect with Telegram API...
+2025-03-30 09:50:31,706 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-03-30 09:50:32,059 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "POST /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/close HTTP/1.1" 429 113
+2025-03-30 09:50:32,059 - telegram_bot_inline - INFO - 🔄 Entering main polling loop...
+2025-03-30 09:50:32,061 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-03-30 09:50:36,041 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=0&timeout=30&allowed_updates=%5B%22message%22%2C+%22edited_message%22%2C+%22callback_query%22%5D HTTP/1.1" 409 143
+2025-03-30 09:50:36,041 - telegram_bot_inline - ERROR - Error 409 in getUpdates: Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2025-03-30 09:50:36,042 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-03-30 09:50:36,394 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "POST /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/close HTTP/1.1" 429 113
+2025-03-30 09:50:38,499 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-03-30 09:50:42,464 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=0&timeout=30&allowed_updates=%5B%22message%22%2C+%22edited_message%22%2C+%22callback_query%22%5D HTTP/1.1" 409 143
+2025-03-30 09:50:42,464 - telegram_bot_inline - ERROR - Error 409 in getUpdates: Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2025-03-30 09:50:42,466 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-03-30 09:50:42,820 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "POST /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/close HTTP/1.1" 429 113
+2025-03-30 09:50:44,922 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-03-30 09:50:48,866 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=0&timeout=30&allowed_updates=%5B%22message%22%2C+%22edited_message%22%2C+%22callback_query%22%5D HTTP/1.1" 409 143
+2025-03-30 09:50:48,866 - telegram_bot_inline - ERROR - Error 409 in getUpdates: Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2025-03-30 09:50:48,868 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-03-30 09:50:49,228 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "POST /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/close HTTP/1.1" 429 113
+2025-03-30 09:50:51,330 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+[2025-03-30 09:50:51 +0000] [6630] [INFO] Handling signal: term
+[2025-03-30 09:50:51 +0000] [6640] [INFO] Worker exiting (pid: 6640)
+[2025-03-30 09:50:51 +0000] [6630] [INFO] Shutting down: Master

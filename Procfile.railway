@@ -1,0 +1,2 @@
+web: python main.py
+setup_webhook: python railway_webhook_setup.py

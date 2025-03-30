@@ -80,25 +80,50 @@ def setup_bot():
                 bot_info = response.json().get('result', {})
                 logger.info(f"✅ اتصال به ربات برقرار شد: @{bot_info.get('username')} (ID: {bot_info.get('id')})")
                 
-                # پاکسازی آپدیت‌های قبلی برای شروع تمیز
+                # استفاده از روش بهتر برای پاکسازی آپدیت‌های قبلی - ابتدا حذف webhook
                 try:
+                    # ابتدا webhook را حذف می‌کنیم و آپدیت‌های در انتظار را پاک می‌کنیم
+                    webhook_delete_response = requests.post(
+                        f"https://api.telegram.org/bot{token}/deleteWebhook",
+                        json={'drop_pending_updates': True},
+                        timeout=10
+                    )
+                    
+                    if webhook_delete_response.status_code == 200 and webhook_delete_response.json().get('ok'):
+                        logger.info("✅ وبهوک با موفقیت حذف شد و آپدیت‌های در انتظار پاک شدند")
+                        time.sleep(2)  # کمی صبر می‌کنیم تا تغییرات اعمال شود
+                    
+                    # حالا برای اطمینان از طریق getUpdates هم تلاش می‌کنیم
                     response = requests.get(
                         f"https://api.telegram.org/bot{token}/getUpdates",
                         params={'offset': -1, 'limit': 1, 'timeout': 5},
                         timeout=10
                     )
-                    if response.json().get('ok') and response.json().get('result'):
+                    
+                    if response.status_code == 200 and response.json().get('ok') and response.json().get('result'):
                         updates = response.json().get('result')
                         if updates:
                             last_update_id = updates[-1]["update_id"]
                             offset = last_update_id + 1
                             # حذف همه‌ی آپدیت‌های قبلی
-                            requests.get(
+                            clear_response = requests.get(
                                 f"https://api.telegram.org/bot{token}/getUpdates",
                                 params={'offset': offset, 'limit': 1, 'timeout': 5},
                                 timeout=10
                             )
-                            logger.info(f"✅ همه‌ی آپدیت‌های قبلی پاک شدند - تنظیم آفست به {offset}")
+                            
+                            if clear_response.status_code == 200 and clear_response.json().get('ok'):
+                                logger.info(f"✅ همه‌ی آپدیت‌های قبلی پاک شدند - تنظیم آفست به {offset}")
+                    
+                    # در نهایت، تلاش می‌کنیم اتصال قبلی را ببندیم
+                    try:
+                        close_response = requests.post(f"https://api.telegram.org/bot{token}/close", timeout=10)
+                        if close_response.status_code == 200:
+                            logger.info("✅ اتصال قبلی بسته شد")
+                        time.sleep(2)  # کمی صبر می‌کنیم تا اتصال کاملاً بسته شود
+                    except Exception as close_error:
+                        logger.error(f"❌ خطا در بستن اتصال قبلی: {close_error}")
+                        
                 except Exception as e:
                     logger.error(f"❌ خطا در پاکسازی آپدیت‌های قبلی: {e}")
                 
@@ -237,13 +262,39 @@ def set_webhook():
     logger.info(f"Setting webhook to: {webhook_url}")
     
     try:
-        # ابتدا حذف تنظیمات webhook قبلی
-        requests.get(f"https://api.telegram.org/bot{token}/deleteWebhook")
+        # ابتدا پاکسازی کامل و اطمینان از بسته شدن اتصال‌های قبلی
+        # حذف webhook با drop_pending_updates=True
+        logger.info("🔄 حذف webhook قبلی و آپدیت‌های در انتظار...")
+        delete_response = requests.post(
+            f"https://api.telegram.org/bot{token}/deleteWebhook",
+            json={'drop_pending_updates': True},
+            timeout=10
+        )
         
-        # تنظیم webhook جدید
-        response = requests.get(
+        if delete_response.status_code == 200 and delete_response.json().get('ok'):
+            logger.info("✅ وبهوک قبلی با موفقیت حذف شد و آپدیت‌های در انتظار پاک شدند")
+        else:
+            logger.warning(f"⚠️ خطا در حذف وبهوک قبلی: {delete_response.text}")
+        
+        # تلاش برای بستن اتصال‌های قبلی
+        try:
+            close_response = requests.post(f"https://api.telegram.org/bot{token}/close", timeout=10)
+            if close_response.status_code == 200:
+                logger.info("✅ همه اتصال‌های قبلی بسته شدند")
+            time.sleep(2)  # کمی صبر می‌کنیم تا تغییرات اعمال شوند
+        except Exception as close_error:
+            logger.error(f"خطا در بستن اتصال‌های قبلی: {close_error}")
+        
+        # تنظیم webhook جدید با گزینه‌های بیشتر
+        logger.info(f"🔄 تنظیم webhook جدید به آدرس: {webhook_url}")
+        response = requests.post(
             f"https://api.telegram.org/bot{token}/setWebhook",
-            params={"url": webhook_url}
+            json={
+                "url": webhook_url,
+                "max_connections": 40,  # افزایش تعداد اتصال‌های همزمان برای کارایی بهتر
+                "allowed_updates": ["message", "edited_message", "callback_query"]  # محدود کردن انواع آپدیت‌ها
+            },
+            timeout=15
         )
         
         # بررسی وضعیت فعلی webhook
@@ -267,7 +318,25 @@ def remove_webhook():
         return jsonify({"status": "error", "message": "No bot token found"})
     
     try:
-        response = requests.get(f"https://api.telegram.org/bot{token}/deleteWebhook")
+        # استفاده از روش بهتر برای پاکسازی - حذف وبهوک با drop_pending_updates
+        response = requests.post(
+            f"https://api.telegram.org/bot{token}/deleteWebhook",
+            json={'drop_pending_updates': True},
+            timeout=10
+        )
+        
+        logger.info("✅ وبهوک با موفقیت حذف شد و آپدیت‌های در انتظار پاک شدند")
+        
+        # تلاش برای بستن اتصال‌های قبلی
+        try:
+            close_response = requests.post(f"https://api.telegram.org/bot{token}/close", timeout=10)
+            if close_response.status_code == 200:
+                logger.info("✅ همه اتصال‌های قبلی بسته شدند")
+        except Exception as close_error:
+            logger.error(f"خطا در بستن اتصال‌های قبلی: {close_error}")
+        
+        # کمی صبر می‌کنیم تا همه تغییرات اعمال شوند
+        time.sleep(3)
         
         # راه‌اندازی مجدد ربات با حالت long polling
         global global_bot
@@ -283,9 +352,40 @@ def remove_webhook():
         logger.error(f"Error removing webhook: {e}")
         return jsonify({"status": "error", "message": str(e)})
 
-# راه‌اندازی ربات در هنگام شروع برنامه
-logger.info("🔄 تلاش برای راه‌اندازی ربات در شروع برنامه")
-start_bot_in_thread()
+# راه‌اندازی ربات در هنگام شروع برنامه - با مدیریت همزمانی بهتر
+try:
+    # ابتدا بررسی می‌کنیم آیا webhook فعال شده است
+    logger.info("🔄 بررسی وضعیت webhook قبل از راه‌اندازی ربات")
+    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    webhook_response = requests.get(f"https://api.telegram.org/bot{token}/getWebhookInfo")
+    
+    if webhook_response.status_code == 200 and webhook_response.json().get('ok', False):
+        webhook_info = webhook_response.json().get('result', {})
+        webhook_url = webhook_info.get('url', '')
+        
+        if webhook_url:
+            logger.info(f"✅ Webhook فعال است: {webhook_url}")
+            # وقتی webhook فعال است، نیازی به راه‌اندازی long polling نیست
+            if '/webhook' in webhook_url:
+                logger.info("⚠️ Webhook فعال است، long polling راه‌اندازی نمی‌شود")
+                global_bot = setup_bot()
+                if global_bot:
+                    global_bot.webhook_mode = True  # تنظیم حالت webhook
+                    logger.info("✅ ربات در حالت webhook آماده است")
+            else:
+                logger.info("🔄 تلاش برای راه‌اندازی ربات در شروع برنامه")
+                start_bot_in_thread()
+        else:
+            logger.info("🔄 Webhook فعال نیست، راه‌اندازی ربات در حالت long polling")
+            start_bot_in_thread()
+    else:
+        logger.warning(f"⚠️ خطا در بررسی وضعیت webhook: {webhook_response.text}")
+        logger.info("🔄 تلاش برای راه‌اندازی ربات در شروع برنامه")
+        start_bot_in_thread()
+except Exception as e:
+    logger.error(f"❌ خطا در بررسی وضعیت webhook: {e}")
+    logger.info("🔄 تلاش برای راه‌اندازی ربات در شروع برنامه")
+    start_bot_in_thread()
 
 # اجرای Flask app در حالت مستقل
 if __name__ == "__main__":

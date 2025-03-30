@@ -1,0 +1,61 @@
+2025-03-30 09:27:16,984 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=534762879&timeout=30&allowed_updates=%5B%22message%22%2C+%22edited_message%22%2C+%22callback_query%22%5D HTTP/1.1" 409 143
+
+2025-03-30 09:27:17,088 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+
+2025-03-30 09:27:21,041 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=534762879&timeout=30&allowed_updates=%5B%22message%22%2C+%22edited_message%22%2C+%22callback_query%22%5D HTTP/1.1" 409 143
+
+2025-03-30 09:27:21,147 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+
+2025-03-30 09:27:25,200 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+
+2025-03-30 09:27:29,144 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=534762879&timeout=30&allowed_updates=%5B%22message%22%2C+%22edited_message%22%2C+%22callback_query%22%5D HTTP/1.1" 409 143
+
+2025-03-30 09:27:29,250 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+
+2025-03-30 09:27:33,204 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=534762879&timeout=30&allowed_updates=%5B%22message%22%2C+%22edited_message%22%2C+%22callback_query%22%5D HTTP/1.1" 409 143
+
+2025-03-30 09:27:33,309 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+
+2025-03-30 09:27:37,246 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=534762879&timeout=30&allowed_updates=%5B%22message%22%2C+%22edited_message%22%2C+%22callback_query%22%5D HTTP/1.1" 409 143
+
+2025-03-30 09:27:37,350 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+
+2025-03-30 09:27:41,294 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=534762879&timeout=30&allowed_updates=%5B%22message%22%2C+%22edited_message%22%2C+%22callback_query%22%5D HTTP/1.1" 409 143
+
+2025-03-30 09:27:41,399 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+
+2025-03-30 09:27:45,348 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=534762879&timeout=30&allowed_updates=%5B%22message%22%2C+%22edited_message%22%2C+%22callback_query%22%5D HTTP/1.1" 409 143
+
+2025-03-30 09:27:45,455 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+
+2025-03-30 09:27:49,430 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=534762879&timeout=30&allowed_updates=%5B%22message%22%2C+%22edited_message%22%2C+%22callback_query%22%5D HTTP/1.1" 409 143
+
+2025-03-30 09:27:49,535 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+
+2025-03-30 09:27:53,488 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=534762879&timeout=30&allowed_updates=%5B%22message%22%2C+%22edited_message%22%2C+%22callback_query%22%5D HTTP/1.1" 409 143
+
+2025-03-30 09:27:53,592 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+
+2025-03-30 09:27:57,562 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=534762879&timeout=30&allowed_updates=%5B%22message%22%2C+%22edited_message%22%2C+%22callback_query%22%5D HTTP/1.1" 409 143
+
+2025-03-30 09:27:57,667 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+
+2025-03-30 09:28:01,634 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=534762879&timeout=30&allowed_updates=%5B%22message%22%2C+%22edited_message%22%2C+%22callback_query%22%5D HTTP/1.1" 409 143
+
+2025-03-30 09:28:01,739 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+
+2025-03-30 09:28:05,681 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=534762879&timeout=30&allowed_updates=%5B%22message%22%2C+%22edited_message%22%2C+%22callback_query%22%5D HTTP/1.1" 409 143
+
+2025-03-30 09:28:05,788 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+
+2025-03-30 09:28:09,734 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=534762879&timeout=30&allowed_updates=%5B%22message%22%2C+%22edited_message%22%2C+%22callback_query%22%5D HTTP/1.1" 409 143
+
+2025-03-30 09:28:09,840 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+
+2025-03-30 09:28:13,798 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=534762879&timeout=30&allowed_updates=%5B%22message%22%2C+%22edited_message%22%2C+%22callback_query%22%5D HTTP/1.1" 409 143
+
+2025-03-30 09:28:13,904 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+
+2025-03-30 09:28:17,874 - urllib3.connectionpool - DEBUG - https://api.telegram.org:443 "GET /bot7877987201:AAFbtodZN_i-xrO5_Y0ZErLTqPqEoFiFKvM/getUpdates?offset=534762879&timeout=30&allowed_updates=%5B%22message%22%2C+%22edited_message%22%2C+%22callback_query%22%5D HTTP/1.1" 409 143
+
+2025-03-30 09:28:17,977 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
