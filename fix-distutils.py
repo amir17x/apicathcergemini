@@ -9,6 +9,15 @@ import subprocess
 import site
 import shutil
 from pathlib import Path
+import time
+
+# لاگ ابتدایی برای اطمینان از اجرای این اسکریپت در Railway
+print("=" * 80)
+print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] RAILWAY INITIALIZATION - FIX-DISTUTILS STARTING")
+print(f"Python version: {sys.version}")
+print(f"Working directory: {os.getcwd()}")
+print(f"Environment variables: PORT={os.environ.get('PORT', 'Not set')}")
+print("=" * 80)
 
 def fix_undetected_chromedriver():
     """رفع مشکل ماژول undetected_chromedriver با تغییر import distutils به packaging"""
