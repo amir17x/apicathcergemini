@@ -234,9 +234,9 @@ def format_proxy_for_requests(proxy_data):
         logger.warning(f"نوع پروکسی نامعتبر: {proxy_type}")
         return None
 
-def test_proxy(proxy_data, timeout=3):
+def test_proxy(proxy_data, timeout=1):
     """
-    تست کارکرد پروکسی با تایم‌اوت کوتاه‌تر و مدیریت خطای بهتر
+    تست کارکرد پروکسی با تایم‌اوت بسیار کوتاه‌تر و مدیریت خطای بهتر
     
     Args:
         proxy_data: دیکشنری اطلاعات پروکسی
@@ -262,15 +262,16 @@ def test_proxy(proxy_data, timeout=3):
         # استفاده از سایت ساده‌تر برای تست سریع‌تر
         test_url = "http://httpbin.org/status/200"
         
-        # تایم‌اوت کوتاه برای جلوگیری از معطلی طولانی
+        # تایم‌اوت بسیار کوتاه برای جلوگیری از معطلی طولانی
         start_time = time.time()
         
         # درخواست با کنترل خطای بیشتر
         try:
+            # استفاده از تایم‌اوت‌های اختصاصی برای هر مرحله برای سرعت بیشتر
             response = requests.get(
                 test_url, 
                 proxies=formatted_proxy, 
-                timeout=timeout,
+                timeout=(timeout, timeout),  # (connect timeout, read timeout)
                 stream=True,  # برای جلوگیری از دانلود کامل محتوا
                 verify=False,  # برای جلوگیری از مشکلات SSL
                 allow_redirects=False  # برای جلوگیری از ریدایرکت‌های طولانی
@@ -428,12 +429,13 @@ def parse_proxy_list(proxy_list_text):
     logger.info(f"تعداد {len(proxy_list)} پروکسی از لیست وارد شده پردازش شد")
     return proxy_list
 
-def find_working_proxy_from_list(proxy_list):
+def find_working_proxy_from_list(proxy_list, max_proxies=30):
     """
-    یافتن اولین پروکسی کارآمد از لیست پروکسی‌ها
+    یافتن اولین پروکسی کارآمد از لیست پروکسی‌ها با محدودیت تعداد
     
     Args:
         proxy_list: لیست دیکشنری‌های پروکسی
+        max_proxies: حداکثر تعداد پروکسی‌ها برای تست (پیش‌فرض: 30)
         
     Returns:
         dict: اولین پروکسی کارآمد یا None اگر هیچ پروکسی کارآمدی پیدا نشد
@@ -441,12 +443,41 @@ def find_working_proxy_from_list(proxy_list):
     if not proxy_list:
         logger.warning("لیست پروکسی خالی است")
         return None
-        
-    for i, proxy in enumerate(proxy_list):
-        logger.info(f"تست پروکسی {i+1} از {len(proxy_list)}: {proxy.get('host')}:{proxy.get('port')}")
-        if test_proxy(proxy):
-            logger.info(f"پروکسی کارآمد پیدا شد: {proxy.get('host')}:{proxy.get('port')}")
+    
+    # محدود کردن تعداد پروکسی‌ها برای تست
+    limited_list = proxy_list[:max_proxies]
+    logger.info(f"تست حداکثر {len(limited_list)} پروکسی از {len(proxy_list)} پروکسی")
+    
+    # اولویت دادن به تست پروکسی‌های HTTP و HTTPS (معمولاً سریعتر هستند)
+    http_proxies = [p for p in limited_list if p.get('type', '').lower() in ('http', 'https')]
+    socks_proxies = [p for p in limited_list if p.get('type', '').lower() in ('socks4', 'socks5')]
+    
+    # ترکیب پروکسی‌ها با اولویت HTTP
+    prioritized_proxies = http_proxies + socks_proxies
+    
+    # پیش‌تفکیک 10 پروکسی اول برای تست سریع
+    first_batch = prioritized_proxies[:10]
+    remaining = prioritized_proxies[10:]
+    
+    # تست سریع 10 پروکسی اول با تایم‌اوت کوتاه
+    for i, proxy in enumerate(first_batch):
+        logger.info(f"تست سریع پروکسی {i+1}/10: {proxy.get('host')}:{proxy.get('port')} ({proxy.get('type')})")
+        if test_proxy(proxy, timeout=1):  # تایم‌اوت بسیار کوتاه
+            logger.info(f"پروکسی کارآمد پیدا شد: {proxy.get('host')}:{proxy.get('port')} ({proxy.get('type')})")
             return proxy
+        
+        # تاخیر خیلی کوتاه بین درخواست‌ها
+        time.sleep(0.1)
+    
+    # اگر هنوز پروکسی کارآمدی پیدا نشده، تست پروکسی‌های باقیمانده با زمان بیشتر
+    for i, proxy in enumerate(remaining):
+        logger.info(f"تست عادی پروکسی {i+1}/{len(remaining)}: {proxy.get('host')}:{proxy.get('port')} ({proxy.get('type')})")
+        if test_proxy(proxy, timeout=2):  # تایم‌اوت متوسط
+            logger.info(f"پروکسی کارآمد پیدا شد: {proxy.get('host')}:{proxy.get('port')} ({proxy.get('type')})")
+            return proxy
+            
+        # تاخیر کوتاه بین درخواست‌ها
+        time.sleep(0.2)
             
     logger.warning("هیچ پروکسی کارآمدی در لیست پیدا نشد")
     return None

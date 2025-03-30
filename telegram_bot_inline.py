@@ -734,8 +734,8 @@ class InlineTelegramBot:
         try:
             import proxy_manager
             
-            # تنظیم تایم‌اوت برای کل عملیات
-            max_operation_time = 30  # حداکثر 30 ثانیه برای کل عملیات
+            # تنظیم تایم‌اوت برای کل عملیات - کاهش به 20 ثانیه
+            max_operation_time = 20  # حداکثر 20 ثانیه برای کل عملیات
             start_time = time.time()
             
             # دریافت پروکسی بر اساس نوع درخواست
@@ -751,17 +751,33 @@ class InlineTelegramBot:
                 proxy = proxy_manager.get_proxy_from_api_url(api_url)
                 
             elif proxy_list:
+                # محدود کردن تعداد پروکسی‌ها برای تست
+                max_test_proxies = 30
+                limited_proxy_list = proxy_list[:max_test_proxies]
+                
                 # ارسال پیام وضعیت به کاربر
                 self.send_message(
                     chat_id,
-                    f"🔍 <b>در حال تست {len(proxy_list)} پروکسی...</b>\n"
+                    f"🔍 <b>در حال تست {len(limited_proxy_list)} پروکسی...</b>\n"
+                    f"(از مجموع {len(proxy_list)} پروکسی وارد شده)\n"
                     f"این فرایند حداکثر {max_operation_time} ثانیه طول می‌کشد."
                 )
                 
                 # تست لیست پروکسی با تایم‌اوت سختگیرانه
-                proxy = proxy_manager.find_working_proxy_from_list(proxy_list)
+                proxy = proxy_manager.find_working_proxy_from_list(limited_proxy_list, max_proxies=max_test_proxies)
                 
             elif proxy_text:
+                # محدود کردن طول متن ورودی
+                max_chars = 10000
+                if len(proxy_text) > max_chars:
+                    truncated_text = proxy_text[:max_chars]
+                    self.send_message(
+                        chat_id,
+                        f"⚠️ <b>متن ورودی بسیار طولانی است</b>\n"
+                        f"فقط {max_chars} کاراکتر اول (حدود {max_chars//15} پروکسی) بررسی می‌شود."
+                    )
+                    proxy_text = truncated_text
+                
                 # ارسال پیام وضعیت به کاربر
                 self.send_message(
                     chat_id,
@@ -779,9 +795,19 @@ class InlineTelegramBot:
                         f"لطفاً پروکسی‌ها را با فرمت صحیح وارد کنید."
                     )
                     return
-                    
+                
+                # محدود کردن تعداد پروکسی‌ها برای تست
+                max_test_proxies = 30
+                limited_proxies = parsed_proxies[:max_test_proxies]
+                
+                if len(parsed_proxies) > max_test_proxies:
+                    self.send_message(
+                        chat_id,
+                        f"ℹ️ <b>تست {max_test_proxies} پروکسی از {len(parsed_proxies)} پروکسی شناسایی شده</b>"
+                    )
+                
                 # تست لیست پروکسی
-                proxy = proxy_manager.find_working_proxy_from_list(parsed_proxies)
+                proxy = proxy_manager.find_working_proxy_from_list(limited_proxies, max_proxies=max_test_proxies)
                 
             else:
                 # اگر هیچ منبعی برای پروکسی ارائه نشده
@@ -792,9 +818,11 @@ class InlineTelegramBot:
                     f"هیچ منبعی برای دریافت پروکسی ارائه نشده است."
                 )
                 return
-                
-            # بررسی تایم‌اوت
+            
+            # بررسی اگر زمان زیادی طول کشیده است
             elapsed = time.time() - start_time
+            
+            # بررسی تایم‌اوت
             if elapsed > max_operation_time:
                 logger.warning(f"Proxy operation timed out after {elapsed:.2f} seconds")
                 self.send_message(
@@ -832,9 +860,11 @@ class InlineTelegramBot:
                 
         except Exception as e:
             logger.error(f"Error in safe_proxy_operation: {e}")
+            elapsed = time.time() - start_time
             self.send_message(
                 chat_id,
                 f"❌ <b>خطا در عملیات پروکسی</b>\n\n"
+                f"زمان سپری شده: {elapsed:.2f} ثانیه\n"
                 f"پیام خطا: {str(e)}\n\n"
                 f"لطفاً دوباره تلاش کنید یا از گزینه «بدون پروکسی» استفاده کنید."
             )
