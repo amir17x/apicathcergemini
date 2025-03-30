@@ -1008,16 +1008,51 @@ class InlineTelegramBot:
             else:
                 logger.error("Failed to connect to Telegram API. Check your token.")
                 logger.error(f"Response: {response.text}")
+                return  # اگر اتصال به API برقرار نشد، از تابع خارج می‌شویم
         except Exception as e:
             logger.error(f"Error connecting to Telegram API: {e}")
+            return  # در صورت بروز خطا در اتصال، از تابع خارج می‌شویم
+        
+        # تنظیم آفست اولیه برای نادیده گرفتن پیام‌های قبلی
+        try:
+            logger.info("Getting initial updates to set offset...")
+            initial_updates = self.get_updates(timeout=1)
+            if initial_updates:
+                # تنظیم آفست به آخرین آپدیت + 1 برای نادیده گرفتن همه آپدیت‌های قبلی
+                last_update_id = initial_updates[-1]["update_id"]
+                self.offset = last_update_id + 1
+                logger.info(f"Setting initial offset to {self.offset} to ignore previous updates")
+        except Exception as e:
+            logger.error(f"Error setting initial offset: {e}")
         
         # حلقه اصلی برای دریافت پیام‌ها
+        processed_updates = set()  # مجموعه‌ای برای ذخیره شناسه‌های آپدیت‌های پردازش شده
+        
         while True:
             try:
                 updates = self.get_updates()
                 if updates:
                     logger.info(f"Received {len(updates)} updates")
-                    self.handle_updates(updates)
+                    
+                    # پردازش آپدیت‌های جدید و جلوگیری از پردازش تکراری
+                    new_updates = []
+                    for update in updates:
+                        update_id = update.get('update_id')
+                        if update_id not in processed_updates:
+                            new_updates.append(update)
+                            processed_updates.add(update_id)
+                            
+                            # برای جلوگیری از رشد بیش از حد مجموعه، اندازه آن را محدود می‌کنیم
+                            if len(processed_updates) > 1000:
+                                # حذف قدیمی‌ترین آیتم‌ها
+                                processed_updates = set(sorted(processed_updates)[-500:])
+                    
+                    if new_updates:
+                        logger.info(f"Processing {len(new_updates)} new updates")
+                        self.handle_updates(new_updates)
+                    else:
+                        logger.info("All updates were already processed")
+                
                 time.sleep(1)  # تأخیر کوتاه بین دریافت‌ها
             except Exception as e:
                 logger.error(f"Error in polling loop: {e}")

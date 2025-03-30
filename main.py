@@ -84,6 +84,14 @@ def start_bot_thread():
     """Start the bot in a separate thread if not already running"""
     global _bot_thread
     
+    # اگر ترد قبلی وجود داشته باشد، ابتدا آن را متوقف می‌کنیم
+    if _bot_thread and _bot_thread.is_alive():
+        logger.info(f"Stopping previous bot thread with ID: {_bot_thread.ident}")
+        # ما نمی‌توانیم به طور مستقیم ترد را متوقف کنیم، اما می‌توانیم آن را نادیده بگیریم
+        _bot_thread = None
+        # کمی صبر می‌کنیم تا ترد قبلی بسته شود
+        time.sleep(2)
+    
     if not _bot_thread or not _bot_thread.is_alive():
         logger.info("Starting bot in a separate thread")
         
@@ -108,7 +116,13 @@ def start_bot_thread():
                 # Try to get updates before running the main loop
                 try:
                     logger.info("Trying to get initial updates...")
+                    # دریافت آخرین آپدیت‌ها و حذف آنها
                     updates = bot.get_updates()
+                    if updates:
+                        # تنظیم آفست به آخرین آپدیت + 1 برای نادیده گرفتن همه آپدیت‌های قبلی
+                        last_update_id = updates[-1]["update_id"]
+                        bot.offset = last_update_id + 1
+                        logger.info(f"Setting offset to {bot.offset} to ignore previous updates")
                     logger.info(f"Initial updates: {updates}")
                 except Exception as update_error:
                     logger.error(f"getUpdates error: {update_error}")
