@@ -1,6 +1,10 @@
 [deploy]
-startCommand = "gunicorn --bind 0.0.0.0:$PORT --reuse-port --reload main:app"
+startCommand = "python fix-distutils.py && gunicorn --bind 0.0.0.0:$PORT --timeout 120 --workers 2 --reuse-port main:app"
 healthcheckPath = "/healthz"
-healthcheckTimeout = 300
+healthcheckTimeout = 60
 restartPolicyType = "on-failure"
-restartPolicyMaxRetries = 10
+restartPolicyMaxRetries = 5
+
+[build]
+builder = "dockerfile"
+buildCommand = "python fix-distutils.py"
