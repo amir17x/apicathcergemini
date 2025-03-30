@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Telegram bot for Gmail account creation and Google Gemini API key generation.
-This version implements a beautiful inline keyboard interface with Persian language support.
+✨ ربات تلگرام هوشمند برای ساخت حساب جیمیل و دریافت کلید API گوگل جمینای ✨
+این نسخه با رابط کاربری شیشه‌ای زیبا و پشتیبانی کامل از زبان فارسی طراحی شده است.
 """
 
 import os
@@ -9,18 +9,116 @@ import logging
 import requests
 import json
 import time
+import sys
 from utils import generate_random_user_info
 import gmail_creator
 import api_key_generator
 import datetime
 import proxy_manager
 
-# Configure logging
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", 
-    level=logging.INFO
-)
+# کلاس سفارشی برای فرمت‌دهی لاگ با رنگ‌های شیک
+class PersianColoredFormatter(logging.Formatter):
+    """فرمتر سفارشی برای ایجاد لاگ‌های رنگی و زیبا به زبان فارسی"""
+    
+    # کدهای رنگی ANSI
+    COLORS = {
+        'DEBUG': '\033[38;5;39m',      # آبی روشن شیک
+        'INFO': '\033[38;5;82m',       # سبز روشن شیک
+        'WARNING': '\033[38;5;220m',   # زرد طلایی
+        'ERROR': '\033[38;5;196m',     # قرمز روشن
+        'CRITICAL': '\033[38;5;201m',  # صورتی
+        'RESET': '\033[0m'             # بازنشانی رنگ
+    }
+    
+    # نمادهای زیبا برای هر سطح لاگ
+    SYMBOLS = {
+        'DEBUG': '🔍',
+        'INFO': '✨',
+        'WARNING': '⚠️',
+        'ERROR': '❌',
+        'CRITICAL': '🚨'
+    }
+    
+    # رنگ‌های پیشرفته برای موضوعات مختلف
+    TOPIC_COLORS = {
+        'webhook': '\033[38;5;147m',       # بنفش کمرنگ
+        'telegram': '\033[38;5;51m',       # فیروزه‌ای
+        'api': '\033[38;5;226m',           # زرد
+        'database': '\033[38;5;83m',       # سبز روشن
+        'connection': '\033[38;5;208m',    # نارنجی
+        'polling': '\033[38;5;45m',        # آبی آسمانی
+        'update': '\033[38;5;118m',        # سبز چمنی
+        'bot': '\033[38;5;219m',           # صورتی کمرنگ
+    }
+    
+    def format(self, record):
+        # افزودن نماد مناسب به پیام
+        level_name = record.levelname
+        symbol = self.SYMBOLS.get(level_name, '✧')
+        
+        # تنظیم رنگ مناسب بر اساس سطح لاگ
+        color_code = self.COLORS.get(level_name, self.COLORS['RESET'])
+        reset_code = self.COLORS['RESET']
+        
+        # رنگ‌آمیزی هوشمند کلمات کلیدی مهم در پیام
+        msg = record.getMessage()
+        
+        # رنگ‌آمیزی موضوعات مختلف در پیام
+        for topic, topic_color in self.TOPIC_COLORS.items():
+            if topic in msg.lower():
+                msg = msg.replace(topic, f"{topic_color}{topic}{color_code}")
+        
+        # تنظیم نمادهای وضعیت در ابتدای پیام
+        status_indicators = {
+            "✅": "\033[38;5;82m✅\033[0m",  # سبز روشن
+            "❌": "\033[38;5;196m❌\033[0m",  # قرمز روشن
+            "⚠️": "\033[38;5;220m⚠️\033[0m",  # زرد
+            "🔄": "\033[38;5;45m🔄\033[0m",   # آبی آسمانی
+            "🚀": "\033[38;5;219m🚀\033[0m",  # صورتی کمرنگ
+        }
+        
+        for emoji, colored_emoji in status_indicators.items():
+            if emoji in msg:
+                msg = msg.replace(emoji, colored_emoji)
+        
+        # فرمت‌دهی زمان با سبک فارسی
+        now = datetime.datetime.now()
+        persianized_time = f"{now:%Y-%m-%d %H:%M:%S}"
+        
+        # قالب‌بندی شیک برای لاگ فارسی
+        formatted_msg = (
+            f"{color_code}{persianized_time}{reset_code} | "
+            f"{color_code}{record.name}{reset_code} | "
+            f"{color_code}{symbol} {level_name}{reset_code} | "
+            f"{msg}"
+        )
+        
+        # افزودن جزئیات بیشتر در مد دیباگ
+        if level_name == 'DEBUG' and hasattr(record, 'pathname'):
+            file_info = f"{os.path.basename(record.pathname)}:{record.lineno}"
+            formatted_msg += f" {self.COLORS['DEBUG']}[{file_info}]{reset_code}"
+        
+        return formatted_msg
+
+# تنظیم لاگینگ فارسی و رنگی
+handler = logging.StreamHandler(sys.stdout)
+handler.setFormatter(PersianColoredFormatter())
+
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# حذف هندلرهای قبلی برای جلوگیری از تکرار پیام‌ها
+for hdlr in logger.handlers[:]:
+    logger.removeHandler(hdlr)
+    
+logger.addHandler(handler)
+
+# نمایش بنر شروع
+logger.info("╭─" + "─" * 70 + "─╮")
+logger.info("│ " + " " * 15 + "🌟 ربات تلگرام حرفه‌ای API جمینای" + " " * 15 + " │")
+logger.info("│ " + " " * 5 + "✨ نسخه 2.1.0 | بهینه‌سازی شده با رابط گرافیکی شیشه‌ای" + " " * 5 + " │")
+logger.info("│ " + " " * 5 + "📆 تاریخ اجرا: " + datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S") + " " * 12 + " │")
+logger.info("╰─" + "─" * 70 + "─╯")
 
 # تنظیم مسیر برای فایل لاگ
 log_file = "/tmp/telegram_bot.log"

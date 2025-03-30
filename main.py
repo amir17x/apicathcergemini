@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-نقطه ورود اصلی برای برنامه.
+✨ نقطه ورود اصلی برای برنامه ✨
 این فایل تنظیمات دیتابیس و راه‌اندازی ربات تلگرام را انجام می‌دهد.
 نسخه بهینه‌شده برای Railway با حذف مکانیزم قفل فایل
 """
@@ -14,19 +14,61 @@ import requests
 from flask import Flask, request, jsonify
 from telegram_bot_inline import InlineTelegramBot
 from models import db, User, Account
+import datetime
 
-# تنظیم لاگینگ کاربردی برای سازگاری با Railway
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    stream=sys.stdout  # ارسال لاگ ها به stdout برای مشاهده در Railway
-)
+# کلاس سفارشی برای فرمت‌دهی لاگ با رنگ‌های شیک
+class ColoredFormatter(logging.Formatter):
+    """فرمتر سفارشی برای ایجاد لاگ‌های رنگی و زیبا"""
+    
+    # کدهای رنگی ANSI
+    COLORS = {
+        'DEBUG': '\033[1;36m',     # آبی فیروزه‌ای پررنگ
+        'INFO': '\033[1;32m',      # سبز پررنگ
+        'WARNING': '\033[1;33m',   # زرد پررنگ
+        'ERROR': '\033[1;31m',     # قرمز پررنگ
+        'CRITICAL': '\033[1;35m',  # بنفش پررنگ
+        'RESET': '\033[0m'         # بازنشانی رنگ
+    }
+    
+    # نمادهای زیبا برای هر سطح لاگ
+    SYMBOLS = {
+        'DEBUG': '🔍',
+        'INFO': '✨',
+        'WARNING': '⚠️',
+        'ERROR': '❌',
+        'CRITICAL': '🚨'
+    }
+    
+    def format(self, record):
+        # افزودن نماد مناسب به پیام
+        symbol = self.SYMBOLS.get(record.levelname, '✧')
+        
+        # تنظیم رنگ مناسب بر اساس سطح لاگ
+        color_code = self.COLORS.get(record.levelname, self.COLORS['RESET'])
+        reset_code = self.COLORS['RESET']
+        
+        # فرمت‌دهی زمان با سبک فارسی
+        now = datetime.datetime.now()
+        persianized_time = f"{now:%Y-%m-%d %H:%M:%S}"
+        
+        # ایجاد پیام نهایی با رنگ و نماد
+        formatted_msg = f"{color_code}[{persianized_time}] - {record.name} - {symbol} {record.levelname}: {record.getMessage()}{reset_code}"
+        
+        return formatted_msg
+
+# تنظیم لاگینگ فارسی و رنگی برای سازگاری با Railway
+handler = logging.StreamHandler(sys.stdout)  # ارسال لاگ ها به stdout برای مشاهده در Railway
+handler.setFormatter(ColoredFormatter())
+
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+logger.addHandler(handler)
 
-# اطلاعات شروع برنامه
-logger.info("=" * 50)
-logger.info("TELEGRAM BOT APPLICATION STARTING - RAILWAY OPTIMIZED")
-logger.info("=" * 50)
+# اطلاعات شروع برنامه با طراحی زیبا
+logger.info("╔" + "═" * 70 + "╗")
+logger.info("║" + " " * 10 + "🚀 آغاز به کار سیستم ربات تلگرام - بهینه‌شده برای Railway" + " " * 10 + "║")
+logger.info("║" + " " * 10 + "📅 تاریخ اجرا: " + datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S") + " " * 23 + "║")
+logger.info("╚" + "═" * 70 + "╝")
 
 # ایجاد Flask app برای API و دیتابیس
 app = Flask(__name__)
