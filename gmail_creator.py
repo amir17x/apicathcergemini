@@ -72,9 +72,17 @@ def create_gmail_account(first_name, last_name, username, password, birth_day, b
                 # Assuming proxy is a string in format protocol://host:port
                 options.add_argument(f'--proxy-server={proxy}')
         
-        # Initialize the driver
-        logger.info("Initializing undetected-chromedriver...")
-        driver = uc.Chrome(options=options)
+        # Initialize the driver with our custom ChromeDriver
+        logger.info("Initializing undetected-chromedriver with custom ChromeDriver...")
+        # Set ChromeDriver path from ~/bin if it exists
+        chromedriver_path = os.path.expanduser("~/bin/chromedriver")
+        if os.path.exists(chromedriver_path):
+            logger.info(f"Using custom ChromeDriver from {chromedriver_path}")
+            driver = uc.Chrome(driver_executable_path=chromedriver_path, options=options)
+        else:
+            # Fallback to default method
+            logger.info("Custom ChromeDriver not found, using default method")
+            driver = uc.Chrome(options=options)
         
         # Set default wait time
         wait = WebDriverWait(driver, 15)

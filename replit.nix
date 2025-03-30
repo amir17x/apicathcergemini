@@ -1,5 +1,33 @@
 {pkgs}: {
   deps = [
+    pkgs.expat
+    pkgs.libdrm
+    pkgs.libpulseaudio
+    pkgs.fontconfig
+    pkgs.cups
+    pkgs.alsaLib
+    pkgs.nspr
+    pkgs.nss
+    pkgs.gdk-pixbuf
+    pkgs.cairo
+    pkgs.gtk3
+    pkgs.pango
+    pkgs.atk
+    pkgs.xorg.libXtst
+    pkgs.xorg.libXrender
+    pkgs.xorg.libXrandr
+    pkgs.xorg.libXi
+    pkgs.xorg.libXfixes
+    pkgs.xorg.libXext
+    pkgs.xorg.libXdamage
+    pkgs.xorg.libXcursor
+    pkgs.xorg.libXcomposite
+    pkgs.xorg.libX11
+    pkgs.glibc
+    pkgs.glib
+    pkgs.unzip
+    pkgs.curl
+    pkgs.wget
     pkgs.chromium
     pkgs.jq
     pkgs.geckodriver
