@@ -11,3 +11,6 @@ restartPolicyType = "always"
 [variables]
 PORT = "5000"
 PYTHON_VERSION = "3.10.13"
+# حتما باید در Railway تنظیم شود:
+# TELEGRAM_BOT_TOKEN - توکن ربات تلگرام
+# DATABASE_URL - آدرس اتصال به دیتابیس

@@ -1638,16 +1638,31 @@ class InlineTelegramBot:
             self.show_main_menu(chat_id, user_id)
     
     def run(self):
-        """حلقه اصلی برای دریافت پیام‌های تلگرام."""
-        logger.info("Starting bot polling...")
+        """حلقه اصلی بهبودیافته برای دریافت پیام‌های تلگرام با مقاوم‌سازی بیشتر."""
+        logger.info("Starting bot polling with robust error handling...")
         logger.info(f"Bot token available and valid: {bool(self.token)}")
         
-        # آزمایش اتصال به API
+        # آزمایش اتصال به API با تایم‌اوت مناسب
         try:
-            response = requests.get(f"{self.base_url}/getMe")
+            response = requests.get(f"{self.base_url}/getMe", timeout=10)
             if response.status_code == 200 and response.json().get('ok'):
                 bot_info = response.json().get('result', {})
-                logger.info(f"Connected to bot: @{bot_info.get('username')} (ID: {bot_info.get('id')})")
+                logger.info(f"✅ Connected to bot: @{bot_info.get('username')} (ID: {bot_info.get('id')})")
+                
+                # ارسال یک پیام به سازنده ربات برای اطلاع از راه‌اندازی موفق
+                try:
+                    creator_id = os.environ.get("CREATOR_TELEGRAM_ID")
+                    if creator_id:
+                        startup_message = (
+                            f"🚀 <b>ربات با موفقیت راه‌اندازی شد</b>\n\n"
+                            f"⏱ زمان: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+                            f"🤖 نام ربات: @{bot_info.get('username')}\n"
+                            f"🔢 شناسه ربات: {bot_info.get('id')}"
+                        )
+                        self.send_message(creator_id, startup_message)
+                        logger.info(f"Sent startup notification to creator (ID: {creator_id})")
+                except Exception as notify_error:
+                    logger.error(f"Could not notify creator of startup: {notify_error}")
             else:
                 logger.error("Failed to connect to Telegram API. Check your token.")
                 logger.error(f"Response: {response.text}")
@@ -1656,26 +1671,58 @@ class InlineTelegramBot:
             logger.error(f"Error connecting to Telegram API: {e}")
             return  # در صورت بروز خطا در اتصال، از تابع خارج می‌شویم
         
-        # تنظیم آفست اولیه برای نادیده گرفتن پیام‌های قبلی
+        # پاکسازی آپدیت‌های قبلی با استفاده از درخواست مستقیم به API
         try:
-            logger.info("Getting initial updates to set offset...")
-            initial_updates = self.get_updates(timeout=1)
-            if initial_updates:
-                # تنظیم آفست به آخرین آپدیت + 1 برای نادیده گرفتن همه آپدیت‌های قبلی
-                last_update_id = initial_updates[-1]["update_id"]
-                self.offset = last_update_id + 1
-                logger.info(f"Setting initial offset to {self.offset} to ignore previous updates")
+            logger.info("Clearing all previous updates directly via API...")
+            clear_response = requests.get(
+                f"{self.base_url}/getUpdates",
+                params={'offset': -1, 'timeout': 1},
+                timeout=10
+            )
+            
+            if clear_response.status_code == 200 and clear_response.json().get('ok'):
+                updates = clear_response.json().get('result', [])
+                if updates:
+                    # آخرین شناسه آپدیت + 1 برای نادیده گرفتن همه آپدیت‌های قبلی
+                    last_update_id = updates[-1]["update_id"]
+                    clear_offset = last_update_id + 1
+                    
+                    # پاکسازی تمام آپدیت‌های قبلی با تنظیم آفست
+                    clear_response2 = requests.get(
+                        f"{self.base_url}/getUpdates",
+                        params={'offset': clear_offset, 'timeout': 1},
+                        timeout=10
+                    )
+                    
+                    if clear_response2.status_code == 200:
+                        self.offset = clear_offset
+                        logger.info(f"✅ Successfully cleared all previous updates. New offset: {clear_offset}")
+            else:
+                logger.error(f"Failed to clear updates: {clear_response.text}")
         except Exception as e:
-            logger.error(f"Error setting initial offset: {e}")
+            logger.error(f"Error clearing previous updates: {e}")
+            # ادامه می‌دهیم حتی اگر پاکسازی با خطا مواجه شود
         
-        # حلقه اصلی برای دریافت پیام‌ها
+        # حلقه اصلی بهبودیافته برای دریافت پیام‌ها
+        retry_count = 0
+        max_retries = 10  # تعداد حداکثر تلاش مجدد قبل از بازنشانی کامل
         processed_updates = set()  # مجموعه‌ای برای ذخیره شناسه‌های آپدیت‌های پردازش شده
+        failure_time = None  # زمان آخرین خطا
+        
+        logger.info("🔄 Entering main polling loop...")
         
         while True:
             try:
-                updates = self.get_updates()
+                updates = self.get_updates(timeout=30)  # تایم‌اوت طولانی‌تر برای Long Polling
+                
+                # بازنشانی شمارنده تلاش مجدد پس از موفقیت
+                if retry_count > 0:
+                    logger.info(f"✅ Connection restored after {retry_count} retries")
+                    retry_count = 0
+                    failure_time = None
+                
                 if updates:
-                    logger.info(f"Received {len(updates)} updates")
+                    logger.info(f"📨 Received {len(updates)} updates")
                     
                     # پردازش آپدیت‌های جدید و جلوگیری از پردازش تکراری
                     new_updates = []
@@ -1684,22 +1731,80 @@ class InlineTelegramBot:
                         if update_id not in processed_updates:
                             new_updates.append(update)
                             processed_updates.add(update_id)
-                            
-                            # برای جلوگیری از رشد بیش از حد مجموعه، اندازه آن را محدود می‌کنیم
-                            if len(processed_updates) > 1000:
-                                # حذف قدیمی‌ترین آیتم‌ها
-                                processed_updates = set(sorted(processed_updates)[-500:])
+                    
+                    # محدود کردن اندازه مجموعه آپدیت‌های پردازش شده
+                    if len(processed_updates) > 1000:
+                        processed_updates = set(sorted(processed_updates)[-500:])
                     
                     if new_updates:
-                        logger.info(f"Processing {len(new_updates)} new updates")
+                        logger.info(f"⚙️ Processing {len(new_updates)} new updates")
                         self.handle_updates(new_updates)
-                    else:
-                        logger.info("All updates were already processed")
                 
-                time.sleep(1)  # تأخیر کوتاه بین دریافت‌ها
+                # تأخیر بسیار کوتاه برای جلوگیری از استفاده‌ی بیش از حد از CPU
+                time.sleep(0.1)
+                
+            except requests.exceptions.ReadTimeout:
+                # تایم‌اوت خواندن معمولاً مشکل‌ساز نیست، بخشی از Long Polling است
+                logger.debug("Read timeout on getUpdates (normal for long polling)")
+                continue
+                
+            except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as conn_error:
+                # خطاهای اتصال نیاز به تلاش مجدد دارند
+                retry_count += 1
+                
+                # ثبت زمان اولین خطا
+                if failure_time is None:
+                    failure_time = time.time()
+                
+                # محاسبه مدت زمان قطعی
+                downtime = time.time() - failure_time
+                
+                if retry_count >= max_retries:
+                    logger.error(f"❌ Connection failed after {retry_count} retries over {downtime:.1f} seconds")
+                    logger.error("Resetting connection and starting fresh...")
+                    
+                    # تلاش برای ریست کردن اتصال
+                    try:
+                        test_response = requests.get(f"{self.base_url}/getMe", timeout=5)
+                        if test_response.status_code == 200:
+                            logger.info("✅ API connection test successful")
+                        
+                        # ریست کردن شمارنده تلاش مجدد
+                        retry_count = 0
+                        failure_time = None
+                    except Exception as reset_error:
+                        logger.error(f"❌ Failed to reset connection: {reset_error}")
+                        # تأخیر طولانی قبل از تلاش بعدی
+                        time.sleep(30)
+                        continue
+                
+                # افزایش تأخیر با هر تلاش مجدد (حداکثر ۱۵ ثانیه)
+                backoff_time = min(retry_count * 2, 15)
+                logger.warning(f"⚠️ Connection error ({retry_count}/{max_retries}): {conn_error}. Retrying in {backoff_time}s...")
+                time.sleep(backoff_time)
+                
             except Exception as e:
-                logger.error(f"Error in polling loop: {e}")
-                time.sleep(5)  # تأخیر بیشتر در صورت بروز خطا
+                logger.error(f"❌ Unexpected error in polling loop: {e}")
+                # بازنشانی آفست در صورت خطاهای مکرر برای جلوگیری از حلقه‌ی خطا
+                if retry_count >= 5:
+                    logger.warning("Resetting offset to prevent error loop")
+                    try:
+                        # دریافت آخرین آفست از API
+                        reset_response = requests.get(
+                            f"{self.base_url}/getUpdates",
+                            params={'offset': -1, 'limit': 1, 'timeout': 1},
+                            timeout=10
+                        )
+                        if reset_response.status_code == 200 and reset_response.json().get('ok'):
+                            updates_reset = reset_response.json().get('result', [])
+                            if updates_reset:
+                                self.offset = updates_reset[-1]["update_id"] + 1
+                                logger.info(f"Reset offset to {self.offset}")
+                    except Exception as reset_error:
+                        logger.error(f"Failed to reset offset: {reset_error}")
+                
+                # تأخیر قبل از تلاش مجدد
+                time.sleep(3)
 
 def run_bot():
     """اجرای ربات تلگرام."""

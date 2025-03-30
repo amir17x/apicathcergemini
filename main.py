@@ -124,36 +124,52 @@ def start_bot_thread():
         def bot_runner():
             try:
                 logger.info("Creating Inline Telegram Bot instance in thread")
-                # Set logging level to debug for more information
+                # تنظیم سطح لاگ به DEBUG برای دریافت اطلاعات بیشتر
                 logging.getLogger().setLevel(logging.DEBUG)
                 
-                # Create and run the bot with Flask app passed for context
+                # ساخت نمونه‌ی ربات با ارسال فلسک اپ برای دسترسی به دیتابیس
                 bot = InlineTelegramBot(app=app)
                 logger.info(f"Bot instance created, token valid: {bool(bot.token)}")
                 
-                # Test connection to Telegram API
+                # تست اتصال به API تلگرام
                 try:
                     import requests
-                    response = requests.get(f"https://api.telegram.org/bot{bot.token}/getMe")
+                    response = requests.get(f"https://api.telegram.org/bot{bot.token}/getMe", timeout=10)
                     logger.info(f"getMe response: {response.text}")
+                    
+                    # بررسی صحت پاسخ دریافتی
+                    if not response.json().get('ok'):
+                        logger.error(f"Telegram API returned error: {response.text}")
+                        return  # خروج در صورت خطا
                 except Exception as get_me_error:
                     logger.error(f"getMe error: {get_me_error}")
+                    return  # خروج در صورت خطا در اتصال
                 
-                # Try to get updates before running the main loop
+                # حذف آپدیت‌های قبلی برای شروع تمیز
                 try:
-                    logger.info("Trying to get initial updates...")
-                    # دریافت آخرین آپدیت‌ها و حذف آنها
-                    updates = bot.get_updates()
-                    if updates:
-                        # تنظیم آفست به آخرین آپدیت + 1 برای نادیده گرفتن همه آپدیت‌های قبلی
-                        last_update_id = updates[-1]["update_id"]
-                        bot.offset = last_update_id + 1
-                        logger.info(f"Setting offset to {bot.offset} to ignore previous updates")
-                    logger.info(f"Initial updates: {updates}")
-                except Exception as update_error:
-                    logger.error(f"getUpdates error: {update_error}")
+                    logger.info("Getting and clearing previous updates...")
+                    response = requests.get(
+                        f"https://api.telegram.org/bot{bot.token}/getUpdates",
+                        params={'offset': -1, 'limit': 1, 'timeout': 1},
+                        timeout=10
+                    )
+                    if response.json().get('ok') and response.json().get('result'):
+                        updates = response.json().get('result')
+                        if updates:
+                            # تنظیم آفست به آخرین آپدیت + 1
+                            last_update_id = updates[-1]["update_id"]
+                            offset = last_update_id + 1
+                            # حذف همه‌ی آپدیت‌های قبلی
+                            requests.get(
+                                f"https://api.telegram.org/bot{bot.token}/getUpdates",
+                                params={'offset': offset, 'limit': 1, 'timeout': 1},
+                                timeout=10
+                            )
+                            logger.info(f"Cleared all previous updates, set offset to {offset}")
+                except Exception as clear_error:
+                    logger.error(f"Error clearing updates: {clear_error}")
                 
-                # Run the bot's main loop
+                # اجرای حلقه‌ی اصلی ربات
                 logger.info("Starting bot.run()...")
                 bot.run()
             except Exception as e:
