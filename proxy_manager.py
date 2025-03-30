@@ -20,75 +20,119 @@ DEFAULT_PROXIES = [
     {"host": "198.8.94.170", "port": "4145", "username": "", "password": "", "type": "socks5"}
 ]
 
-# منابع پروکسی آنلاین
+# منابع پروکسی آنلاین با API‌های جدید
 PROXY_SOURCES = {
     'socks5': [
         # API جدید از ProxyScrape
         'https://api.proxyscrape.com/v4/free-proxy-list/get?request=display_proxies&proxy_format=protocol|port&format=text',
         'https://api.proxyscrape.com/v4/free-proxy-list/get?request=displayproxies&protocol=socks5&timeout=10000&country=all&ssl=all&anonymity=all',
+        # Proxifly - آپدیت هر ۵ دقیقه
+        'https://cdn.jsdelivr.net/gh/proxifly/free-proxy-list@main/proxies/protocols/socks5/data.txt',
         # APIهای قبلی
         'https://api.proxyscrape.com/v2/?request=getproxies&protocol=socks5&timeout=10000&country=all',
         'https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/socks5.txt',
         'https://raw.githubusercontent.com/ShiftyTR/Proxy-List/master/socks5.txt',
         'https://raw.githubusercontent.com/hookzof/socks5_list/master/proxy.txt',
+        # API‌های جدید از منابع مختلف
+        'https://proxylist.geonode.com/api/proxy-list?limit=100&page=1&sort_by=lastChecked&sort_type=desc&protocols=socks5',
+        'https://www.proxy-list.download/api/v1/get?type=socks5',
+        'https://www.proxyscan.io/api/proxy?format=txt&type=socks5&ping=500&limit=50',
     ],
     'socks4': [
         # API جدید از ProxyScrape
         'https://api.proxyscrape.com/v4/free-proxy-list/get?request=displayproxies&protocol=socks4&timeout=10000&country=all&ssl=all&anonymity=all',
+        # Proxifly - آپدیت هر ۵ دقیقه
+        'https://cdn.jsdelivr.net/gh/proxifly/free-proxy-list@main/proxies/protocols/socks4/data.txt',
         # APIهای قبلی
         'https://api.proxyscrape.com/v2/?request=getproxies&protocol=socks4&timeout=10000&country=all',
         'https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/socks4.txt',
         'https://raw.githubusercontent.com/ShiftyTR/Proxy-List/master/socks4.txt',
+        # API‌های جدید
+        'https://proxylist.geonode.com/api/proxy-list?limit=100&page=1&sort_by=lastChecked&sort_type=desc&protocols=socks4',
+        'https://www.proxy-list.download/api/v1/get?type=socks4',
+        'https://www.proxyscan.io/api/proxy?format=txt&type=socks4&ping=500&limit=50',
     ],
     'http': [
         # API جدید از ProxyScrape
         'https://api.proxyscrape.com/v4/free-proxy-list/get?request=displayproxies&protocol=http&timeout=10000&country=all&ssl=all&anonymity=all',
+        # Proxifly - آپدیت هر ۵ دقیقه
+        'https://cdn.jsdelivr.net/gh/proxifly/free-proxy-list@main/proxies/protocols/http/data.txt',
         # APIهای قبلی
         'https://api.proxyscrape.com/v2/?request=getproxies&protocol=http&timeout=10000&country=all',
         'https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/http.txt',
         'https://raw.githubusercontent.com/ShiftyTR/Proxy-List/master/http.txt',
         'https://raw.githubusercontent.com/clarketm/proxy-list/master/proxy-list-raw.txt',
+        # API‌های جدید
+        'https://proxylist.geonode.com/api/proxy-list?limit=100&page=1&sort_by=lastChecked&sort_type=desc&protocols=http',
+        'https://www.proxy-list.download/api/v1/get?type=http',
+        'https://www.proxyscan.io/api/proxy?format=txt&type=http&ping=500&limit=50',
+        'https://free-proxy-list.net/download.pl?format=txt',
+    ],
+    'https': [
+        # API‌های HTTPS
+        'https://api.proxyscrape.com/v4/free-proxy-list/get?request=displayproxies&protocol=https&timeout=10000&country=all&ssl=all&anonymity=all',
+        'https://api.proxyscrape.com/v2/?request=getproxies&protocol=https&timeout=10000&country=all',
+        'https://www.proxy-list.download/api/v1/get?type=https',
+        'https://www.proxyscan.io/api/proxy?format=txt&type=https&ping=500&limit=50',
     ],
 }
 
 # توضیحات و منابع پیشنهادی برای پروکسی
 PROXY_RESOURCES_INFO = """
-## منابع پیشنهادی برای پروکسی:
+🌐 <b>منابع رایگان پروکسی</b> 🌐
 
-1. **سایت‌های ارائه دهنده پروکسی رایگان:**
-   - ProxyScrape: https://proxyscrape.com
-   - Free-Proxy-List: https://free-proxy-list.net
-   - Geonode: https://geonode.com/free-proxy-list
-   - Spys.one: https://spys.one
+✨ <b>سایت‌های ارائه‌دهنده پروکسی رایگان:</b>
+🔹 ProxyScrape: https://proxyscrape.com
+🔹 Free-Proxy-List: https://free-proxy-list.net
+🔹 Geonode: https://geonode.com/free-proxy-list
+🔹 Spys.one: https://spys.one
+🔹 ProxyScan: https://www.proxyscan.io
+🔹 Proxy-List: https://www.proxy-list.download
+🔹 Hidemy.name: https://hidemy.name/en/proxy-list/
 
-2. **مخازن GitHub با لیست پروکسی:**
-   - github.com/TheSpeedX/PROXY-List
-   - github.com/ShiftyTR/Proxy-List
-   - github.com/hookzof/socks5_list
-   - github.com/clarketm/proxy-list
+🔄 <b>API‌های جدید پروکسی رایگان:</b>
+🔸 <b>ProxyScrape API v4 (بهترین):</b>
+   • <code>https://api.proxyscrape.com/v4/free-proxy-list/get?request=displayproxies&protocol=all</code>
 
-3. **سرویس‌های پروکسی خصوصی (پولی اما مطمئن):**
-   - Bright Data (Luminati): https://brightdata.com
-   - Oxylabs: https://oxylabs.io
-   - SmartProxy: https://smartproxy.com
-   - IPRoyal: https://iproyal.com
+🔸 <b>Geonode API (با فیلتر پیشرفته):</b>
+   • <code>https://proxylist.geonode.com/api/proxy-list?limit=50</code>
 
-## انواع پروکسی پشتیبانی شده:
-- SOCKS5: بهترین گزینه با پشتیبانی از همه پروتکل‌ها و احراز هویت
-- SOCKS4: سریع اما با محدودیت‌های بیشتر نسبت به SOCKS5
-- HTTP/HTTPS: مناسب برای وب اما محدودتر از SOCKS
+🔸 <b>Proxifly (آپدیت هر ۵ دقیقه):</b>
+   • <code>https://cdn.jsdelivr.net/gh/proxifly/free-proxy-list@main/proxies/protocols/socks5/data.txt</code>
 
-برای هر پروکسی، یک خط جداگانه وارد کنید. فرمت‌های پشتیبانی شده:
-- `host:port`
-- `protocol://host:port`
-- `protocol://username:password@host:port`
+🔸 <b>Proxyscan API (تست شده):</b>
+   • <code>https://www.proxyscan.io/api/proxy?format=txt&limit=100</code>
 
-مثال:
-```
-103.105.50.194:8080
-socks5://72.206.181.103:4145
-http://username:password@1.2.3.4:8080
-```
+📦 <b>مخازن GitHub با لیست پروکسی به‌روز:</b>
+🔹 TheSpeedX: github.com/TheSpeedX/PROXY-List
+🔹 ShiftyTR: github.com/ShiftyTR/Proxy-List
+🔹 hookzof: github.com/hookzof/socks5_list
+🔹 clarketm: github.com/clarketm/proxy-list
+🔹 monosans: github.com/monosans/proxy-list
+🔹 proxifly: github.com/proxifly/free-proxy-list
+
+🌐 <b>انواع پروکسی پشتیبانی شده:</b>
+✅ <b>SOCKS5:</b> بهترین گزینه با پشتیبانی از همه پروتکل‌ها و احراز هویت
+✅ <b>SOCKS4:</b> سریع اما با محدودیت‌های بیشتر نسبت به SOCKS5
+✅ <b>HTTP:</b> مناسب برای وب اما محدودتر از SOCKS
+✅ <b>HTTPS:</b> امن‌تر از HTTP با پشتیبانی از SSL/TLS
+
+📋 <b>فرمت‌های پشتیبانی شده:</b>
+🔹 ساده: <code>host:port</code>
+🔹 با پروتکل: <code>protocol://host:port</code>
+🔹 با احراز هویت: <code>protocol://username:password@host:port</code>
+
+📝 <b>مثال‌های کاربردی:</b>
+<code>103.105.50.194:8080</code>
+<code>socks5://72.206.181.103:4145</code>
+<code>http://username:password@1.2.3.4:8080</code>
+
+💡 <b>نکات مهم و راهنمایی:</b>
+• برای عملکرد بهتر در ساخت حساب Gmail، از پروکسی‌های SOCKS5 استفاده کنید
+• پروکسی‌های کشورهای آمریکا، کانادا و اروپای غربی برای ساخت حساب Gmail بهتر عمل می‌کنند
+• کیفیت پروکسی‌های رایگان متغیر است؛ اگر یک پروکسی کار نکرد، پروکسی دیگری امتحان کنید
+• برای آپلود فایل پروکسی، هر پروکسی را در یک خط جداگانه وارد کنید (حداکثر 100 پروکسی)
+• در صورت استفاده از API پروکسی، آدرس کامل API را وارد کنید
 """
 
 def fetch_proxies_from_source(url, proxy_type):
