@@ -4,13 +4,25 @@
 """
 ماژول یکپارچه‌سازی Twilio برای دریافت و استفاده از شماره‌های تلفن موقت.
 این ماژول برای دریافت کدهای تایید پیامکی در فرآیند ثبت‌نام خودکار حساب Google استفاده می‌شود.
+
+این ماژول شامل قابلیت‌های زیر است:
+- مدیریت شماره‌های تلفن Twilio (استفاده از شماره موجود یا خرید شماره جدید)
+- انتظار هوشمند برای دریافت پیامک‌های حاوی کد تأیید
+- تشخیص خودکار الگوهای مختلف کد تأیید در پیام‌های دریافتی
+- مدیریت خطاها و تلاش مجدد در صورت شکست عملیات
+- آزادسازی منابع پس از استفاده
 """
 
 import os
 import re
 import time
 import logging
-from typing import Tuple, Optional, Union, List, Dict, Any
+import threading
+from concurrent.futures import ThreadPoolExecutor
+from typing import Tuple, Optional, Union, List, Dict, Any, Callable, TypeVar
+
+# برای حل مشکل LSP در Callable
+T = TypeVar('T')
 
 # تنظیم لاگینگ
 logging.basicConfig(level=logging.DEBUG, 
@@ -226,6 +238,140 @@ class TwilioManager:
             return False, None, f"خطا: {str(e)}"
 
 
+class PhoneVerificationService:
+    """
+    سرویس تأیید شماره تلفن با استفاده از Twilio.
+    این کلاس یک رابط ساده و کارآمد برای عملیات مرتبط با تأیید شماره تلفن فراهم می‌کند.
+    """
+    
+    def __init__(self):
+        """مقداردهی اولیه سرویس تأیید شماره تلفن."""
+        self.twilio_manager = TwilioManager()
+        self.default_phone_number = os.environ.get('TWILIO_PHONE_NUMBER')
+        self.is_available = self.twilio_manager.available
+        
+        if self.default_phone_number:
+            logger.info(f"شماره تلفن پیش‌فرض Twilio پیکربندی شده است: {self.default_phone_number}")
+        else:
+            logger.warning("شماره تلفن پیش‌فرض Twilio پیکربندی نشده است. از متغیر محیطی TWILIO_PHONE_NUMBER استفاده کنید.")
+        
+    def get_verification_phone_number(self, country_code: str = "US") -> Tuple[bool, Optional[str], str]:
+        """
+        دریافت یک شماره تلفن برای استفاده در فرآیند تأیید.
+        اگر شماره پیش‌فرض تنظیم شده باشد، از آن استفاده می‌کند؛ در غیر این صورت یک شماره جدید خریداری می‌کند.
+        
+        Args:
+            country_code: کد کشور برای خرید شماره تلفن جدید (در صورت نیاز)
+            
+        Returns:
+            Tuple[bool, Optional[str], str]: وضعیت موفقیت، شماره تلفن و پیام
+        """
+        if not self.is_available:
+            return False, None, "سرویس تأیید شماره تلفن در دسترس نیست."
+        
+        # استفاده از شماره تلفن پیش‌فرض اگر موجود باشد
+        if self.default_phone_number:
+            logger.info(f"استفاده از شماره تلفن پیش‌فرض: {self.default_phone_number}")
+            return True, self.default_phone_number, "استفاده از شماره تلفن پیش‌فرض."
+        
+        # خرید شماره تلفن جدید
+        logger.info("شماره تلفن پیش‌فرض موجود نیست. در حال خرید شماره جدید...")
+        return self.twilio_manager.get_phone_number(country_code)
+    
+    def wait_for_verification_code(self, phone_number: str, timeout: int = 60, interval: int = 5, 
+                               retry_count: int = 3) -> Tuple[bool, Optional[str], str]:
+        """
+        انتظار برای دریافت کد تأیید با تلاش‌های مجدد خودکار.
+        
+        Args:
+            phone_number: شماره تلفنی که منتظر دریافت کد تأیید برای آن هستیم
+            timeout: حداکثر زمان انتظار به ثانیه برای هر تلاش
+            interval: فاصله زمانی بین بررسی‌های متوالی به ثانیه
+            retry_count: تعداد تلاش‌های مجدد در صورت شکست
+            
+        Returns:
+            Tuple[bool, Optional[str], str]: وضعیت موفقیت، کد تأیید و پیام
+        """
+        if not self.is_available:
+            return False, None, "سرویس تأیید شماره تلفن در دسترس نیست."
+        
+        for attempt in range(retry_count):
+            logger.info(f"تلاش {attempt + 1}/{retry_count} برای دریافت کد تأیید...")
+            success, code, message = self.twilio_manager.wait_for_sms(phone_number, timeout, interval)
+            
+            if success and code:
+                return True, code, message
+            
+            if attempt < retry_count - 1:
+                logger.warning(f"تلاش ناموفق: {message}. در حال تلاش مجدد...")
+                time.sleep(interval)  # انتظار کوتاه قبل از تلاش مجدد
+        
+        return False, None, f"پس از {retry_count} تلاش، کد تأیید دریافت نشد."
+    
+    def cleanup_phone_number(self, phone_number: str) -> None:
+        """
+        پاکسازی و آزادسازی منابع مرتبط با شماره تلفن.
+        اگر از شماره پیش‌فرض استفاده شده باشد، آن را آزاد نمی‌کند.
+        
+        Args:
+            phone_number: شماره تلفنی که می‌خواهیم منابع آن را پاکسازی کنیم
+        """
+        if not self.is_available:
+            logger.warning("سرویس تأیید شماره تلفن در دسترس نیست. پاکسازی انجام نشد.")
+            return
+        
+        # اگر شماره تلفن، شماره پیش‌فرض است، آن را آزاد نکن
+        if phone_number == self.default_phone_number:
+            logger.info(f"شماره تلفن {phone_number} شماره پیش‌فرض است و آزاد نمی‌شود.")
+            return
+        
+        # آزادسازی شماره تلفن خریداری شده
+        success, message = self.twilio_manager.release_phone_number(phone_number)
+        if success:
+            logger.info(f"شماره تلفن {phone_number} با موفقیت آزاد شد.")
+        else:
+            logger.warning(f"خطا در آزادسازی شماره تلفن {phone_number}: {message}")
+    
+    def verify_phone_number_with_callback(self, phone_number: str, 
+                                     submit_callback: Callable[[], Any], 
+                                     code_entry_callback: Callable[[str], Any],
+                                     timeout: int = 60) -> Tuple[bool, str]:
+        """
+        تأیید شماره تلفن با استفاده از callbacks برای ثبت شماره و ورود کد.
+        
+        Args:
+            phone_number: شماره تلفنی که می‌خواهیم تأیید کنیم
+            submit_callback: تابعی که برای ارسال فرم شماره تلفن فراخوانی می‌شود
+            code_entry_callback: تابعی که برای وارد کردن کد تأیید فراخوانی می‌شود
+            timeout: حداکثر زمان انتظار به ثانیه
+            
+        Returns:
+            Tuple[bool, str]: وضعیت موفقیت و پیام
+        """
+        if not self.is_available:
+            return False, "سرویس تأیید شماره تلفن در دسترس نیست."
+        
+        try:
+            # ارسال فرم شماره تلفن
+            submit_callback()
+            logger.info("فرم شماره تلفن ارسال شد. در انتظار دریافت کد تأیید...")
+            
+            # انتظار برای دریافت کد تأیید
+            success, code, message = self.wait_for_verification_code(phone_number, timeout)
+            if not success or not code:
+                return False, f"خطا در دریافت کد تأیید: {message}"
+            
+            # وارد کردن کد تأیید
+            code_entry_callback(code)
+            logger.info("کد تأیید وارد شد.")
+            
+            return True, "تأیید شماره تلفن با موفقیت انجام شد."
+            
+        except Exception as e:
+            logger.error(f"خطا در فرآیند تأیید شماره تلفن: {e}")
+            return False, f"خطا: {str(e)}"
+
+
 def is_twilio_available() -> bool:
     """
     بررسی در دسترس بودن Twilio.
@@ -259,3 +405,13 @@ if __name__ == "__main__":
         manager = TwilioManager()
         balance_success, balance, message = manager.get_account_balance()
         print(f"موجودی: {balance} ({message})")
+        
+        # تست سرویس تأیید شماره تلفن
+        service = PhoneVerificationService()
+        if service.is_available:
+            print(f"شماره تلفن پیش‌فرض: {service.default_phone_number}")
+            success, phone, message = service.get_verification_phone_number()
+            print(f"شماره تلفن: {phone} ({message})")
+            
+            if success and phone:
+                print("این یک تست است. سرویس در حال اجرا و فعال است.")

@@ -85,6 +85,7 @@ def validate_api_key(api_key: str) -> Dict[str, Any]:
 def handle_phone_verification(driver: uc.Chrome, wait: WebDriverWait) -> Tuple[bool, str]:
     """
     مدیریت تأیید شماره تلفن در فرآیند ثبت‌نام یا ورود به حساب گوگل.
+    این نسخه بهبودیافته از سرویس PhoneVerificationService برای مدیریت بهینه تأیید شماره استفاده می‌کند.
     
     Args:
         driver: نمونه درایور Selenium
@@ -98,120 +99,144 @@ def handle_phone_verification(driver: uc.Chrome, wait: WebDriverWait) -> Tuple[b
         return False, "ماژول twilio_integration در دسترس نیست."
     
     try:
-        # بررسی وجود فرم ورود شماره تلفن
-        phone_field = None
-        try:
-            phone_field = wait.until(EC.presence_of_element_located((By.ID, "phoneNumberId")))
-        except:
-            try:
-                phone_field = wait.until(EC.presence_of_element_located((By.XPATH, "//input[contains(@id, 'phone')]")))
-            except:
-                logger.info("فرم ورود شماره تلفن یافت نشد.")
-                return False, "فرم ورود شماره تلفن یافت نشد."
+        # ایجاد سرویس تأیید شماره تلفن
+        from twilio_integration import PhoneVerificationService
+        phone_service = PhoneVerificationService()
         
-        if not phone_field:
-            return False, "فیلد شماره تلفن یافت نشد."
-            
-        # ایجاد یک مدیر Twilio و دریافت شماره تلفن موقت
-        twilio_manager = TwilioManager()
-        if not twilio_manager.available:
-            return False, "اتصال به Twilio برقرار نشد."
-            
-        # دریافت شماره تلفن
-        success, phone_number, message = twilio_manager.get_phone_number("US")
+        if not phone_service.is_available:
+            return False, "سرویس تأیید شماره تلفن در دسترس نیست."
+        
+        # دریافت شماره تلفن (استفاده از شماره پیش‌فرض یا خرید شماره جدید)
+        success, phone_number, message = phone_service.get_verification_phone_number("US")
         if not success or not phone_number:
             return False, f"خطا در دریافت شماره تلفن: {message}"
             
-        logger.info(f"شماره تلفن موقت دریافت شد: {phone_number}")
+        logger.info(f"شماره تلفن برای تأیید دریافت شد: {phone_number}")
         
-        # وارد کردن شماره تلفن در فرم
-        phone_field.clear()
-        phone_field.send_keys(phone_number)
-        time.sleep(1)
-        
-        # کلیک روی دکمه ارسال کد
-        next_button = None
+        # بررسی وجود فرم ورود شماره تلفن
+        phone_field = None
         try:
-            next_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//span[text()='Next']/parent::button")))
-        except:
-            try:
-                next_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//span[text()='Send']/parent::button")))
-            except:
+            # تلاش برای یافتن فیلد شماره تلفن با استراتژی‌های مختلف
+            for selector in [
+                (By.ID, "phoneNumberId"),
+                (By.XPATH, "//input[contains(@id, 'phone')]"),
+                (By.XPATH, "//input[contains(@name, 'phone')]"),
+                (By.XPATH, "//div[contains(text(), 'Phone')]/following::input[1]")
+            ]:
                 try:
-                    next_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(@type, 'submit')]")))
+                    phone_field = wait.until(EC.presence_of_element_located(selector))
+                    if phone_field:
+                        break
                 except:
-                    return False, "دکمه ارسال کد تأیید یافت نشد."
+                    continue
                     
-        if next_button:
-            next_button.click()
-            logger.info("دکمه ارسال کد تأیید کلیک شد.")
-            time.sleep(5)
-        else:
-            return False, "دکمه ارسال کد تأیید یافت نشد."
-            
-        # انتظار برای دریافت کد تأیید
-        success, verification_code, message = twilio_manager.wait_for_sms(phone_number, timeout=60, interval=5)
-        if not success or not verification_code:
-            # آزادسازی شماره تلفن
-            twilio_manager.release_phone_number(phone_number)
-            return False, f"خطا در دریافت کد تأیید: {message}"
-            
-        logger.info(f"کد تأیید دریافت شد: {verification_code}")
-        
-        # وارد کردن کد تأیید
-        code_field = None
-        try:
-            code_field = wait.until(EC.presence_of_element_located((By.ID, "code")))
-        except:
-            try:
-                code_field = wait.until(EC.presence_of_element_located((By.XPATH, "//input[contains(@id, 'code') or contains(@id, 'verification')]")))
-            except:
-                # آزادسازی شماره تلفن
-                twilio_manager.release_phone_number(phone_number)
-                return False, "فیلد ورود کد تأیید یافت نشد."
+            if not phone_field:
+                # پاکسازی منابع در صورت نیاز
+                phone_service.cleanup_phone_number(phone_number)
+                return False, "فیلد شماره تلفن یافت نشد."
                 
-        if code_field:
-            code_field.clear()
-            code_field.send_keys(verification_code)
+            # وارد کردن شماره تلفن در فرم
+            phone_field.clear()
+            phone_field.send_keys(phone_number)
             time.sleep(1)
             
-            # کلیک روی دکمه تأیید
-            verify_button = None
-            try:
-                verify_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//span[text()='Verify']/parent::button")))
-            except:
-                try:
-                    verify_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(@type, 'submit')]")))
-                except:
-                    # آزادسازی شماره تلفن
-                    twilio_manager.release_phone_number(phone_number)
-                    return False, "دکمه تأیید کد یافت نشد."
-                    
-            if verify_button:
-                verify_button.click()
-                logger.info("دکمه تأیید کد کلیک شد.")
-                time.sleep(5)
-            else:
-                # آزادسازی شماره تلفن
-                twilio_manager.release_phone_number(phone_number)
-                return False, "دکمه تأیید کد یافت نشد."
-        else:
-            # آزادسازی شماره تلفن
-            twilio_manager.release_phone_number(phone_number)
-            return False, "فیلد ورود کد تأیید یافت نشد."
+            # تعریف تابع callback برای ارسال فرم شماره تلفن
+            def submit_phone_form():
+                # کلیک روی دکمه ارسال کد با استراتژی‌های مختلف
+                for button_selector in [
+                    (By.XPATH, "//span[text()='Next']/parent::button"),
+                    (By.XPATH, "//span[text()='Send']/parent::button"),
+                    (By.XPATH, "//button[contains(@type, 'submit')]"),
+                    (By.XPATH, "//input[contains(@type, 'submit')]")
+                ]:
+                    try:
+                        button = wait.until(EC.element_to_be_clickable(button_selector))
+                        if button:
+                            button.click()
+                            logger.info("دکمه ارسال کد تأیید کلیک شد.")
+                            return True
+                    except:
+                        continue
+                
+                raise Exception("دکمه ارسال کد تأیید یافت نشد.")
             
-        # آزادسازی شماره تلفن پس از استفاده
-        twilio_manager.release_phone_number(phone_number)
-        
-        # بررسی موفقیت‌آمیز بودن تأیید شماره تلفن
-        if "verification successful" in driver.page_source.lower() or "verify" not in driver.page_source.lower():
-            return True, "تأیید شماره تلفن با موفقیت انجام شد."
-        else:
-            return False, "تأیید شماره تلفن ناموفق بود."
+            # تعریف تابع callback برای وارد کردن کد تأیید
+            def enter_verification_code(code):
+                # یافتن فیلد ورود کد تأیید
+                code_field = None
+                for code_selector in [
+                    (By.ID, "code"),
+                    (By.XPATH, "//input[contains(@id, 'code')]"),
+                    (By.XPATH, "//input[contains(@id, 'verification')]"),
+                    (By.XPATH, "//div[contains(text(), 'verification')]/following::input[1]")
+                ]:
+                    try:
+                        code_field = wait.until(EC.presence_of_element_located(code_selector))
+                        if code_field:
+                            break
+                    except:
+                        continue
+                
+                if not code_field:
+                    raise Exception("فیلد ورود کد تأیید یافت نشد.")
+                
+                # وارد کردن کد تأیید
+                code_field.clear()
+                code_field.send_keys(code)
+                time.sleep(1)
+                
+                # کلیک روی دکمه تأیید
+                for verify_selector in [
+                    (By.XPATH, "//span[text()='Verify']/parent::button"),
+                    (By.XPATH, "//button[contains(@type, 'submit')]"),
+                    (By.XPATH, "//input[contains(@type, 'submit')]")
+                ]:
+                    try:
+                        verify_button = wait.until(EC.element_to_be_clickable(verify_selector))
+                        if verify_button:
+                            verify_button.click()
+                            logger.info("دکمه تأیید کد کلیک شد.")
+                            return True
+                    except:
+                        continue
+                
+                raise Exception("دکمه تأیید کد یافت نشد.")
+            
+            # استفاده از سرویس تأیید شماره با callback‌های تعریف شده
+            success, message = phone_service.verify_phone_number_with_callback(
+                phone_number=phone_number,
+                submit_callback=submit_phone_form,
+                code_entry_callback=enter_verification_code,
+                timeout=90  # زمان بیشتر برای اطمینان
+            )
+            
+            # پاکسازی منابع
+            phone_service.cleanup_phone_number(phone_number)
+            
+            # بررسی موفقیت‌آمیز بودن تأیید شماره تلفن
+            if success:
+                # تأیید اضافی با بررسی محتوای صفحه
+                time.sleep(5)  # انتظار برای بارگذاری صفحه بعدی
+                if ("verification successful" in driver.page_source.lower() or 
+                    "verify" not in driver.page_source.lower() or
+                    "continue" in driver.page_source.lower()):
+                    return True, "تأیید شماره تلفن با موفقیت انجام شد."
+                else:
+                    # ممکن است تأیید موفق بوده ولی صفحه آن را منعکس نکرده باشد
+                    logger.warning("تأیید انجام شد اما تغییری در صفحه مشاهده نشد.")
+                    return True, "تأیید شماره تلفن انجام شد."
+            else:
+                return False, f"خطا در تأیید شماره تلفن: {message}"
+                
+        except Exception as e:
+            logger.error(f"خطا در یافتن فیلد شماره تلفن: {e}")
+            # پاکسازی منابع
+            phone_service.cleanup_phone_number(phone_number)
+            return False, f"خطا در یافتن فیلد شماره تلفن: {str(e)}"
             
     except Exception as e:
         logger.error(f"خطا در فرآیند تأیید شماره تلفن: {e}")
-        return False, str(e)
+        return False, f"خطا در فرآیند تأیید شماره تلفن: {str(e)}"
 
 def generate_api_key(gmail, password, proxy=None, test_key=True):
     """

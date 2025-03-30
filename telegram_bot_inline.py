@@ -1206,12 +1206,54 @@ class InlineTelegramBot:
             self.process_account_creation(chat_id, user_id, proxy)
     
     def process_account_creation(self, chat_id, user_id, proxy=None):
-        """پردازش ساخت حساب و دریافت کلید API."""
+        """
+        پردازش ساخت حساب و دریافت کلید API با استفاده از سرویس تأیید شماره تلفن بهبودیافته.
+        این نسخه بهبودیافته از کلاس PhoneVerificationService برای مدیریت بهینه تأیید شماره استفاده می‌کند.
+        
+        Args:
+            chat_id: شناسه چت تلگرام
+            user_id: شناسه کاربر تلگرام
+            proxy: تنظیمات پروکسی (اختیاری)
+        """
+        # بررسی اعتبار Twilio
+        try:
+            from twilio_integration import is_twilio_available, PhoneVerificationService
+            
+            # نمایش وضعیت سرویس تأیید شماره تلفن به کاربر
+            twilio_available = is_twilio_available()
+            if twilio_available:
+                logger.info("Twilio service is available for phone verification")
+                # بررسی وجود شماره تلفن پیش‌فرض
+                phone_service = PhoneVerificationService()
+                if phone_service.default_phone_number:
+                    verification_status = (
+                        f"✅ <b>سرویس تأیید شماره تلفن:</b> فعال\n"
+                        f"📱 <b>شماره تلفن پیش‌فرض:</b> در دسترس\n"
+                    )
+                else:
+                    verification_status = (
+                        f"✅ <b>سرویس تأیید شماره تلفن:</b> فعال\n"
+                        f"📱 <b>شماره تلفن پیش‌فرض:</b> استفاده از خرید شماره موقت\n"
+                    )
+            else:
+                logger.warning("Twilio service is not available for phone verification")
+                verification_status = f"⚠️ <b>سرویس تأیید شماره تلفن:</b> غیرفعال\n"
+        except Exception as e:
+            logger.error(f"Error checking Twilio service: {e}")
+            verification_status = f"❌ <b>سرویس تأیید شماره تلفن:</b> خطا در بررسی وضعیت\n"
+            
         # تولید اطلاعات تصادفی برای حساب
         user_info = generate_random_user_info()
         
-        # ارسال پیام وضعیت اولیه
-        self.send_message(chat_id, "⏳ <b>در حال ساخت حساب Gmail...</b>")
+        # ارسال پیام وضعیت اولیه با اطلاعات سرویس تأیید شماره
+        self.send_message(
+            chat_id, 
+            f"⏳ <b>در حال ساخت حساب Gmail...</b>\n\n"
+            f"{verification_status}"
+            f"⚙️ <b>اطلاعات حساب:</b>\n"
+            f"👤 نام: {user_info['first_name']} {user_info['last_name']}\n"
+            f"📅 تاریخ تولد: {user_info['birth_day']}/{user_info['birth_month']}/{user_info['birth_year']}\n"
+        )
         
         try:
             # مرحله ۱: ساخت حساب جیمیل
