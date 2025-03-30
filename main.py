@@ -219,24 +219,23 @@ def status():
 
 @app.route('/healthz')
 def healthz():
-    """Simple healthcheck endpoint that always returns 200
-    Railway uses this to check if the application is healthy and running
     """
-    try:
-        # هیچگونه بررسی پایگاه داده انجام نمی‌دهیم تا سریع‌تر پاسخ دهد
-        # این فقط بررسی می‌کند که سرور فلسک در حال اجراست
-        return jsonify({
-            "status": "ok",
-            "message": "Service is up and running",
-            "timestamp": time.time()
-        })
-    except Exception as e:
-        # حتی در صورت خطا هم کد 200 برمی‌گردانیم تا healthcheck موفق باشد
-        logging.error(f"Error in healthcheck: {e}")
-        return jsonify({
-            "status": "ok",  # همیشه "ok" برمی‌گردانیم حتی در صورت خطا
-            "message": "Service is responding to healthcheck"
-        }), 200
+    مسیر سلامت ساده که همیشه کد 200 برمی‌گرداند.
+    Railway از این مسیر برای بررسی سلامت برنامه استفاده می‌کند.
+    """
+    # ساده‌ترین پاسخ ممکن بدون هیچ بررسی اضافی
+    return "OK", 200
+
+# اضافه کردن مسیرهای پشتیبان دیگر برای سلامت‌سنجی
+@app.route('/health')
+def health():
+    """مسیر پشتیبان سلامت‌سنجی"""
+    return "OK", 200
+
+@app.route('/_health')
+def _health():
+    """مسیر پشتیبان دیگر سلامت‌سنجی"""
+    return "OK", 200
 
 @app.route('/restart', methods=['POST'])
 def restart_bot():

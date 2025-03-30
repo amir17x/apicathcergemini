@@ -1,14 +1,35 @@
 [deploy]
-startCommand = "python fix-distutils.py && gunicorn --bind 0.0.0.0:${PORT:-5000} --timeout 120 --workers 2 --reuse-port main:app"
+startCommand = "python fix-distutils.py && gunicorn --bind 0.0.0.0:${PORT:-5000} --workers 1 --threads 2 --timeout 90 --keep-alive 5 --reload --access-logfile - --error-logfile - main:app"
 healthcheckPath = "/healthz"
-healthcheckTimeout = 120
-restartPolicyType = "always"
-restartPolicyMaxRetries = 5
+healthcheckTimeout = 30
+healthcheckInterval = 30
+restartPolicyType = "on-failure"
+restartPolicyMaxRetries = 10
 
+# تنظیمات ساخت
 [build]
 builder = "dockerfile"
 buildCommand = "python fix-distutils.py"
 
+# متغیرهای محیطی
 [variables]
 PORT = "5000"
 PYTHON_VERSION = "3.10.13"
+GUNICORN_CMD_ARGS = "--access-logfile=- --error-logfile=- --forwarded-allow-ips='*'"
+
+# تنظیمات سلامت‌سنجی پیشرفته
+[[healthchecks]]
+path = "/healthz"
+timeout = 30
+interval = 15
+grace = 120
+
+[[healthchecks]]
+path = "/health"
+timeout = 30
+interval = 15
+
+[[healthchecks]]
+path = "/_health"
+timeout = 30
+interval = 15
