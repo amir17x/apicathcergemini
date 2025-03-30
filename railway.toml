@@ -1,20 +1,13 @@
+# تنظیمات کاملاً ساده و بدون پیچیدگی برای Railway
 [deploy]
-startCommand = "python fix-distutils.py && gunicorn --bind 0.0.0.0:${PORT:-5000} --workers 1 --threads 2 --timeout 90 --keep-alive 5 --reload --access-logfile - --error-logfile - main:app"
-healthcheckPath = "/healthz"
-healthcheckTimeout = 30
-healthcheckInterval = 30
-restartPolicyType = "always"
-restartPolicyMaxRetries = 10
-
-# تنظیمات ساخت
-[build]
+# استفاده از Dockerfile بدون دستور شروع اضافی
 builder = "dockerfile"
-buildCommand = "python fix-distutils.py"
+# کاملاً غیرفعال کردن healthcheck
+healthcheckDisabled = true
+# تنظیم نوع راه‌اندازی مجدد
+restartPolicyType = "always"
 
-# متغیرهای محیطی
+# متغیرهای محیطی ضروری
 [variables]
 PORT = "5000"
 PYTHON_VERSION = "3.10.13"
-GUNICORN_CMD_ARGS = "--access-logfile=- --error-logfile=- --forwarded-allow-ips='*'"
-
-# بخش healthchecks را حذف می‌کنیم زیرا ظاهراً مشکل ایجاد می‌کند

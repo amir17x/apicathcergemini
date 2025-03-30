@@ -39,4 +39,5 @@ ENV CHROMEDRIVER_PATH=/usr/local/bin/chromedriver
 ENV PYTHONUNBUFFERED=1
 
 # اجرای فایل رفع مشکل distutils و سپس راه‌اندازی سرور
-CMD python fix-distutils.py && gunicorn --bind 0.0.0.0:${PORT:-5000} --workers 2 --timeout 120 main:app
+# اجرای برنامه با تنظیمات ساده‌تر برای ربات تلگرام
+CMD python fix-distutils.py && gunicorn --bind 0.0.0.0:${PORT:-5000} --workers 1 --threads 2 --timeout 90 --reload main:app
