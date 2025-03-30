@@ -609,6 +609,8 @@ class InlineTelegramBot:
         # فرمت بندی متن برای تلگرام
         resources_text = proxy_manager.PROXY_RESOURCES_INFO.replace('## ', '<b>').replace('#', '</b>')
         resources_text = resources_text.replace('```', '<code>').replace('```', '</code>')
+        # اصلاح نشانه‌گذاری HTML
+        resources_text = resources_text.replace('<code>', '<code>').replace('</code>', '</code>')
         
         # ارسال پیام با منابع پروکسی
         self.send_message(
