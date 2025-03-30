@@ -4,6 +4,7 @@
 """
 ماژول دریافت API Key از Google Gemini.
 این ماژول برای اتوماسیون فرآیند ورود به Google AI Studio و دریافت API Key استفاده می‌شود.
+با پشتیبانی از حل خودکار CAPTCHA به روش‌های مختلف.
 """
 
 import logging
@@ -13,6 +14,7 @@ import re
 import random
 import traceback
 import json
+import subprocess
 from typing import Dict, Optional, Tuple, Union, Any, List
 
 from selenium import webdriver
@@ -21,9 +23,17 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException
 import undetected_chromedriver as uc
 from webdriver_manager.chrome import ChromeDriverManager
+
+# ایمپورت ماژول حل CAPTCHA
+try:
+    from captcha_solver import CaptchaSolver
+    CAPTCHA_SOLVER_AVAILABLE = True
+except ImportError:
+    CAPTCHA_SOLVER_AVAILABLE = False
 
 # تنظیم لاگینگ
 logging.basicConfig(level=logging.DEBUG, 
@@ -238,7 +248,7 @@ def handle_phone_verification(driver: uc.Chrome, wait: WebDriverWait) -> Tuple[b
         logger.error(f"خطا در فرآیند تأیید شماره تلفن: {e}")
         return False, f"خطا در فرآیند تأیید شماره تلفن: {str(e)}"
 
-def generate_api_key(gmail, password, proxy=None, test_key=True):
+def generate_api_key(gmail, password, proxy=None, test_key=True, telegram_chat_id=None):
     """
     دریافت کلید API از Google Gemini با استفاده از اتوماسیون Selenium.
     
@@ -247,6 +257,7 @@ def generate_api_key(gmail, password, proxy=None, test_key=True):
         password: رمز عبور حساب Gmail
         proxy: تنظیمات پروکسی (اختیاری)
         test_key: آیا اعتبار API Key پس از دریافت بررسی شود؟ (پیش‌فرض: True)
+        telegram_chat_id: شناسه چت تلگرام برای ارسال CAPTCHA (اختیاری)
         
     Returns:
         dict: یک دیکشنری با وضعیت موفقیت و کلید API یا اطلاعات خطا
@@ -360,16 +371,105 @@ def generate_api_key(gmail, password, proxy=None, test_key=True):
             driver.save_screenshot(screenshot_path)
             logger.info(f"Screenshot saved to {screenshot_path}")
             
-            return {
-                'success': False,
-                'error': 'Additional verification required for sign-in. Manual intervention needed.'
-            }
+            # Check for CAPTCHA first
+            if CAPTCHA_SOLVER_AVAILABLE:
+                logger.info("Checking for CAPTCHA...")
+                captcha_solver = CaptchaSolver(telegram_bot_token=os.environ.get('TELEGRAM_BOT_TOKEN'))
+                has_captcha, captcha_type, captcha_info = captcha_solver.detect_captcha(driver)
+                
+                if has_captcha:
+                    logger.info(f"CAPTCHA detected! Type: {captcha_type}")
+                    
+                    # First try to bypass CAPTCHA
+                    bypass_success, bypass_message = captcha_solver.bypass_captcha(driver)
+                    if bypass_success:
+                        logger.info(f"Successfully bypassed CAPTCHA: {bypass_message}")
+                        # Continue with the process
+                        time.sleep(3)
+                    else:
+                        logger.info(f"Could not bypass CAPTCHA: {bypass_message}")
+                        
+                        # Try audio method for reCAPTCHA
+                        if captcha_type == 'recaptcha':
+                            audio_success, audio_message = captcha_solver.solve_recaptcha_audio(driver)
+                            if audio_success:
+                                logger.info(f"Successfully solved reCAPTCHA using audio method: {audio_message}")
+                                # Continue with the process
+                                time.sleep(3)
+                            else:
+                                logger.warning(f"Failed to solve reCAPTCHA using audio method: {audio_message}")
+                                
+                                # As last resort, try telegram-based CAPTCHA solving if chat_id is provided
+                                if telegram_chat_id:
+                                    logger.info(f"Attempting to solve CAPTCHA via Telegram with chat_id: {telegram_chat_id}")
+                                    telegram_success, telegram_message = captcha_solver.solve_captcha_via_telegram(driver, telegram_chat_id)
+                                    if telegram_success:
+                                        logger.info(f"Successfully solved CAPTCHA via Telegram: {telegram_message}")
+                                        time.sleep(3)
+                                    else:
+                                        logger.warning(f"Failed to solve CAPTCHA via Telegram: {telegram_message}")
+                                        # Fall back to manual verification
+                                else:
+                                    logger.warning("No Telegram chat_id provided, can't use Telegram for CAPTCHA solving")
+                                    # Fall back to manual verification
+                
+                # Check if we still have verification required after CAPTCHA solving
+                if "verify it's you" in driver.page_source.lower() or "2-step verification" in driver.page_source.lower():
+                    logger.warning("Still need verification after CAPTCHA check")
+                    return {
+                        'success': False,
+                        'error': 'Additional verification required for sign-in. Manual intervention needed.'
+                    }
+            else:
+                return {
+                    'success': False,
+                    'error': 'Additional verification required for sign-in. Manual intervention needed.'
+                }
         
         # Step 4: Navigate to API key page
         logger.info("Navigating to API keys page...")
         try:
             # Wait to be redirected to AI Studio page
             time.sleep(5)
+            
+            # Check for CAPTCHA on the AI Studio page
+            if CAPTCHA_SOLVER_AVAILABLE:
+                logger.info("Checking for CAPTCHA on AI Studio page...")
+                captcha_solver = CaptchaSolver(telegram_bot_token=os.environ.get('TELEGRAM_BOT_TOKEN'))
+                has_captcha, captcha_type, captcha_info = captcha_solver.detect_captcha(driver)
+                
+                if has_captcha:
+                    logger.info(f"CAPTCHA detected on AI Studio page! Type: {captcha_type}")
+                    
+                    # Try to bypass CAPTCHA
+                    bypass_success, bypass_message = captcha_solver.bypass_captcha(driver)
+                    if bypass_success:
+                        logger.info(f"Successfully bypassed CAPTCHA: {bypass_message}")
+                        time.sleep(3)
+                    else:
+                        logger.info(f"Could not bypass CAPTCHA: {bypass_message}")
+                        
+                        # Try audio method for reCAPTCHA
+                        if captcha_type == 'recaptcha':
+                            audio_success, audio_message = captcha_solver.solve_recaptcha_audio(driver)
+                            if audio_success:
+                                logger.info(f"Successfully solved reCAPTCHA using audio method: {audio_message}")
+                                time.sleep(3)
+                            else:
+                                logger.warning(f"Failed to solve reCAPTCHA using audio method: {audio_message}")
+                                
+                                # As last resort, try telegram-based CAPTCHA solving if chat_id is provided
+                                if telegram_chat_id:
+                                    logger.info(f"Attempting to solve CAPTCHA via Telegram with chat_id: {telegram_chat_id}")
+                                    telegram_success, telegram_message = captcha_solver.solve_captcha_via_telegram(driver, telegram_chat_id)
+                                    if telegram_success:
+                                        logger.info(f"Successfully solved CAPTCHA via Telegram: {telegram_message}")
+                                        time.sleep(3)
+                                    else:
+                                        logger.warning(f"Failed to solve CAPTCHA via Telegram: {telegram_message}")
+                                else:
+                                    logger.warning("No Telegram chat_id provided, can't use Telegram for CAPTCHA solving")
+                                # Continue anyway, may still work
             
             # Click on API keys tab
             api_keys_link = WebDriverWait(driver, 10).until(

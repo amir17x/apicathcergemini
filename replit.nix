@@ -1,5 +1,6 @@
 {pkgs}: {
   deps = [
+    pkgs.ffmpeg
     pkgs.expat
     pkgs.libdrm
     pkgs.libpulseaudio

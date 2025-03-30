@@ -1298,7 +1298,8 @@ class InlineTelegramBot:
                 birth_month=user_info['birth_month'],
                 birth_year=user_info['birth_year'],
                 gender=user_info['gender'],
-                proxy=proxy
+                proxy=proxy,
+                telegram_chat_id=str(chat_id)  # اضافه کردن شناسه چت تلگرام برای حل CAPTCHA
             )
             
             # بررسی نتیجه ساخت جیمیل
@@ -1331,7 +1332,8 @@ class InlineTelegramBot:
                 gmail=gmail,
                 password=user_info['password'],
                 proxy=proxy,
-                test_key=True  # اضافه کردن پارامتر تست اعتبار API Key
+                test_key=True,  # اضافه کردن پارامتر تست اعتبار API Key
+                telegram_chat_id=str(chat_id)  # اضافه کردن شناسه چت تلگرام برای حل CAPTCHA
             )
             
             # دریافت تاریخ و زمان فعلی

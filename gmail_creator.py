@@ -14,13 +14,20 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException,
 import undetected_chromedriver as uc
 from webdriver_manager.chrome import ChromeDriverManager
 
+# ایمپورت ماژول حل CAPTCHA
+try:
+    from captcha_solver import CaptchaSolver
+    CAPTCHA_SOLVER_AVAILABLE = True
+except ImportError:
+    CAPTCHA_SOLVER_AVAILABLE = False
+
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, 
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 def create_gmail_account(first_name, last_name, username, password, birth_day, birth_month, 
-                        birth_year, gender, proxy=None):
+                        birth_year, gender, proxy=None, telegram_chat_id=None):
     """
     Create a Gmail account using Selenium automation.
     
@@ -34,6 +41,7 @@ def create_gmail_account(first_name, last_name, username, password, birth_day, b
         birth_year: Year of birth
         gender: Gender selection
         proxy: Optional proxy settings
+        telegram_chat_id: Telegram chat ID for CAPTCHA solving assistance (optional)
         
     Returns:
         dict: A dictionary with 'success' status and additional info
@@ -114,6 +122,32 @@ def create_gmail_account(first_name, last_name, username, password, birth_day, b
         next_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//span[text()='Next']/parent::button")))
         next_button.click()
         time.sleep(3)
+        
+        # Check for CAPTCHA on this first step
+        if CAPTCHA_SOLVER_AVAILABLE:
+            logger.info("Checking for CAPTCHA after first step...")
+            captcha_solver = CaptchaSolver(telegram_bot_token=os.environ.get('TELEGRAM_BOT_TOKEN'))
+            has_captcha, captcha_type, captcha_info = captcha_solver.detect_captcha(driver)
+            
+            if has_captcha:
+                logger.info(f"CAPTCHA detected! Type: {captcha_type}")
+                
+                # First try to bypass CAPTCHA
+                bypass_success, bypass_message = captcha_solver.bypass_captcha(driver)
+                if bypass_success:
+                    logger.info(f"Successfully bypassed CAPTCHA: {bypass_message}")
+                    time.sleep(3)
+                else:
+                    logger.info(f"Could not bypass CAPTCHA: {bypass_message}")
+                    
+                    # Try audio method for reCAPTCHA
+                    if captcha_type == 'recaptcha':
+                        audio_success, audio_message = captcha_solver.solve_recaptcha_audio(driver)
+                        if audio_success:
+                            logger.info(f"Successfully solved reCAPTCHA using audio method: {audio_message}")
+                            time.sleep(3)
+                        else:
+                            logger.warning(f"Failed to solve reCAPTCHA using audio method: {audio_message}")
         
         # Enter birthday information
         logger.info("Entering birthday information...")
@@ -256,16 +290,59 @@ def create_gmail_account(first_name, last_name, username, password, birth_day, b
         
         # Check for verification requirement (phone/recovery email)
         if "Verify it's you" in driver.page_source or "verification" in driver.page_source.lower() or "phone" in driver.page_source.lower():
-            logger.warning("Phone verification required")
+            logger.warning("Phone verification or CAPTCHA may be required")
             # Take screenshot for debugging
             screenshot_path = f"/tmp/verification_required_{username}.png"
             driver.save_screenshot(screenshot_path)
             logger.info(f"Screenshot saved to {screenshot_path}")
             
-            return {
-                'success': False,
-                'error': 'Phone verification required. Manual intervention needed.'
-            }
+            # Check for CAPTCHA first
+            if CAPTCHA_SOLVER_AVAILABLE:
+                logger.info("Checking for CAPTCHA...")
+                captcha_solver = CaptchaSolver(telegram_bot_token=os.environ.get('TELEGRAM_BOT_TOKEN'))
+                has_captcha, captcha_type, captcha_info = captcha_solver.detect_captcha(driver)
+                
+                if has_captcha:
+                    logger.info(f"CAPTCHA detected! Type: {captcha_type}")
+                    
+                    # First try to bypass CAPTCHA
+                    bypass_success, bypass_message = captcha_solver.bypass_captcha(driver)
+                    if bypass_success:
+                        logger.info(f"Successfully bypassed CAPTCHA: {bypass_message}")
+                        # Continue with the process
+                        time.sleep(3)
+                    else:
+                        logger.info(f"Could not bypass CAPTCHA: {bypass_message}")
+                        
+                        # Try audio method for reCAPTCHA
+                        if captcha_type == 'recaptcha':
+                            audio_success, audio_message = captcha_solver.solve_recaptcha_audio(driver)
+                            if audio_success:
+                                logger.info(f"Successfully solved reCAPTCHA using audio method: {audio_message}")
+                                # Continue with the process
+                                time.sleep(3)
+                            else:
+                                logger.warning(f"Failed to solve reCAPTCHA using audio method: {audio_message}")
+                                
+                                # As last resort, try telegram-based CAPTCHA solving if chat_id is provided
+                                if telegram_chat_id:
+                                    logger.info(f"Attempting to solve CAPTCHA via Telegram with chat_id: {telegram_chat_id}")
+                                    telegram_success, telegram_message = captcha_solver.solve_captcha_via_telegram(driver, telegram_chat_id)
+                                    if telegram_success:
+                                        logger.info(f"Successfully solved CAPTCHA via Telegram: {telegram_message}")
+                                        time.sleep(3)
+                                    else:
+                                        logger.warning(f"Failed to solve CAPTCHA via Telegram: {telegram_message}")
+                                else:
+                                    logger.warning("No Telegram chat_id provided, can't use Telegram for CAPTCHA solving")
+                
+            # Check if we still have verification required after CAPTCHA solving
+            if "Verify it's you" in driver.page_source or "verification" in driver.page_source.lower() or "phone" in driver.page_source.lower():
+                logger.warning("Still need verification after CAPTCHA check")
+                return {
+                    'success': False,
+                    'error': 'Phone verification required. Manual intervention needed.'
+                }
         
         # Check for terms of service page
         if "Terms of Service" in driver.page_source or "Privacy and Terms" in driver.page_source:
