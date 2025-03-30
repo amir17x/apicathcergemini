@@ -2,7 +2,7 @@
 """
 ✨ نقطه ورود اصلی برای برنامه ✨
 این فایل تنظیمات دیتابیس و راه‌اندازی ربات تلگرام را انجام می‌دهد.
-نسخه بهینه‌شده برای Railway با حذف مکانیزم قفل فایل
+نسخه بهینه‌شده برای Railway با مکانیزم قفل فایل
 """
 
 import os
@@ -15,6 +15,7 @@ from flask import Flask, request, jsonify
 from telegram_bot_inline import InlineTelegramBot
 from models import db, User, Account
 import datetime
+from telegram_single_instance import TelegramSingleInstance
 
 # کلاس سفارشی برای فرمت‌دهی لاگ با رنگ‌های شیک
 class ColoredFormatter(logging.Formatter):
@@ -394,40 +395,72 @@ def remove_webhook():
         logger.error(f"Error removing webhook: {e}")
         return jsonify({"status": "error", "message": str(e)})
 
-# راه‌اندازی ربات در هنگام شروع برنامه - با مدیریت همزمانی بهتر
-try:
-    # ابتدا بررسی می‌کنیم آیا webhook فعال شده است
-    logger.info("🔄 بررسی وضعیت webhook قبل از راه‌اندازی ربات")
-    token = os.environ.get("TELEGRAM_BOT_TOKEN")
-    webhook_response = requests.get(f"https://api.telegram.org/bot{token}/getWebhookInfo")
+# راه‌اندازی ربات در هنگام شروع برنامه - با مکانیزم قفل فایل
+def run_bot_with_lock():
+    """راه‌اندازی ربات تلگرام با مکانیزم قفل فایل برای جلوگیری از اجرای چند نمونه"""
+    logger.info("🔄 شروع راه‌اندازی ربات با مکانیزم قفل فایل")
     
-    if webhook_response.status_code == 200 and webhook_response.json().get('ok', False):
-        webhook_info = webhook_response.json().get('result', {})
-        webhook_url = webhook_info.get('url', '')
-        
-        if webhook_url:
-            logger.info(f"✅ Webhook فعال است: {webhook_url}")
-            # وقتی webhook فعال است، نیازی به راه‌اندازی long polling نیست
-            if '/webhook' in webhook_url:
-                logger.info("⚠️ Webhook فعال است، long polling راه‌اندازی نمی‌شود")
-                global_bot = setup_bot()
-                if global_bot:
-                    global_bot.webhook_mode = True  # تنظیم حالت webhook
-                    logger.info("✅ ربات در حالت webhook آماده است")
+    def bot_main_function():
+        """تابع اصلی ربات که در صورت موفقیت در گرفتن قفل اجرا می‌شود"""
+        try:
+            # ابتدا بررسی می‌کنیم آیا webhook فعال شده است
+            logger.info("🔄 بررسی وضعیت webhook قبل از راه‌اندازی ربات")
+            token = os.environ.get("TELEGRAM_BOT_TOKEN")
+            webhook_response = requests.get(f"https://api.telegram.org/bot{token}/getWebhookInfo")
+            
+            if webhook_response.status_code == 200 and webhook_response.json().get('ok', False):
+                webhook_info = webhook_response.json().get('result', {})
+                webhook_url = webhook_info.get('url', '')
+                
+                if webhook_url:
+                    logger.info(f"✅ Webhook فعال است: {webhook_url}")
+                    # وقتی webhook فعال است، نیازی به راه‌اندازی long polling نیست
+                    if '/webhook' in webhook_url:
+                        logger.info("⚠️ Webhook فعال است، long polling راه‌اندازی نمی‌شود")
+                        global_bot = setup_bot()
+                        if global_bot:
+                            global_bot.webhook_mode = True  # تنظیم حالت webhook
+                            logger.info("✅ ربات در حالت webhook آماده است")
+                    else:
+                        logger.info("🔄 تلاش برای راه‌اندازی ربات در شروع برنامه")
+                        start_bot_in_thread()
+                else:
+                    logger.info("🔄 Webhook فعال نیست، راه‌اندازی ربات در حالت long polling")
+                    start_bot_in_thread()
             else:
+                logger.warning(f"⚠️ خطا در بررسی وضعیت webhook: {webhook_response.text}")
                 logger.info("🔄 تلاش برای راه‌اندازی ربات در شروع برنامه")
                 start_bot_in_thread()
-        else:
-            logger.info("🔄 Webhook فعال نیست، راه‌اندازی ربات در حالت long polling")
-            start_bot_in_thread()
-    else:
-        logger.warning(f"⚠️ خطا در بررسی وضعیت webhook: {webhook_response.text}")
-        logger.info("🔄 تلاش برای راه‌اندازی ربات در شروع برنامه")
-        start_bot_in_thread()
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"❌ خطا در راه‌اندازی ربات: {e}")
+            return False
+    
+    # ایجاد نمونه مدیریت تک‌نمونه برای ربات تلگرام
+    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    if not token:
+        logger.error("❌ توکن ربات تلگرام یافت نشد! لطفاً آن را در متغیرهای محیطی تنظیم کنید.")
+        return False
+    
+    instance_manager = TelegramSingleInstance(telegram_bot_token=token)
+    result = instance_manager.run_as_single_instance(bot_main_function)
+    
+    return result
+
+# اجرای تابع راه‌اندازی با مکانیزم قفل فایل
+try:
+    run_bot_with_lock()
 except Exception as e:
-    logger.error(f"❌ خطا در بررسی وضعیت webhook: {e}")
-    logger.info("🔄 تلاش برای راه‌اندازی ربات در شروع برنامه")
-    start_bot_in_thread()
+    logger.error(f"❌ خطا در راه‌اندازی ربات با مکانیزم قفل فایل: {e}")
+    # در صورت خطا، تلاش برای راه‌اندازی به روش معمولی
+    try:
+        logger.info("🔄 تلاش برای راه‌اندازی به روش معمولی...")
+        start_bot_in_thread()
+    except Exception as fallback_error:
+        logger.critical(f"❌ خطای بحرانی در راه‌اندازی ربات: {fallback_error}")
+        # در اینجا می‌توان کد مدیریت خطای بیشتری اضافه کرد
 
 # اجرای Flask app در حالت مستقل
 if __name__ == "__main__":
