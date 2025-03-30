@@ -235,11 +235,33 @@ def setup_bot():
         return None
 
 def start_bot_in_thread():
-    """راه‌اندازی ربات در یک ترد جداگانه"""
+    """راه‌اندازی ربات در یک ترد جداگانه با تشخیص هوشمند محیط"""
+    # بررسی محیط اجرایی - با قابلیت غیرفعال‌سازی
+    # DISABLE_ENV_CHECK=1 برای غیرفعال‌سازی این بررسی
+    if os.environ.get('DISABLE_ENV_CHECK') != '1':
+        is_replit = 'REPL_ID' in os.environ or 'REPLIT_DB_URL' in os.environ
+        is_railway = any(key.startswith('RAILWAY_') for key in os.environ)
+        
+        if is_replit and not is_railway:
+            logger.warning("⚠️ در محیط Replit هستیم، ربات را راه‌اندازی نمی‌کنیم تا با نمونه Railway تداخل نداشته باشد")
+            logger.info("ℹ️ اگر می‌خواهید ربات را در Replit اجرا کنید، لطفاً ابتدا نمونه Railway را متوقف کنید")
+            logger.info("💡 برای راه‌اندازی اجباری ربات در Replit، از پارامتر FORCE_BOT_START=1 استفاده کنید")
+            
+            # اگر کاربر به صورت اجباری خواسته باشد ربات راه‌اندازی شود
+            if os.environ.get('FORCE_BOT_START') == '1':
+                logger.warning("🔔 راه‌اندازی اجباری ربات در Replit...")
+            else:
+                # در صورتی که در Replit هستیم، فقط API را ارائه می‌دهیم و ربات را راه‌اندازی نمی‌کنیم
+                logger.info("💡 فقط API وب ارائه می‌شود، ربات تلگرام راه‌اندازی نمی‌شود")
+                return None
+    else:
+        logger.warning("⚠️ بررسی محیط غیرفعال شده است، ربات را در هر محیطی راه‌اندازی می‌کنیم")
+    
+    # راه‌اندازی ربات
     bot = setup_bot()
     if not bot:
         logger.error("❌ ربات راه‌اندازی نشد، ترد شروع نمی‌شود")
-        return
+        return None
     
     def bot_runner():
         try:
@@ -254,6 +276,7 @@ def start_bot_in_thread():
     bot_thread.daemon = True  # اجازه می‌دهد برنامه اصلی بدون منتظر ماندن برای ترد، خاتمه یابد
     bot_thread.start()
     logger.info(f"✅ ترد ربات با شناسه {bot_thread.ident} شروع به کار کرد")
+    return bot
 
 # مسیرهای Flask برای سلامت‌سنجی
 @app.route('/')
@@ -283,12 +306,243 @@ def status():
             account_count = 0
             db_status = f"خطا: {str(e)}"
     
-    return jsonify({
+    # بررسی وضعیت محیط
+    is_replit = 'REPL_ID' in os.environ or 'REPLIT_DB_URL' in os.environ
+    is_railway = any(key.startswith('RAILWAY_') for key in os.environ)
+    
+    environment = "ناشناخته"
+    if is_replit and not is_railway:
+        environment = "Replit"
+    elif is_railway:
+        environment = "Railway"
+    
+    # بررسی وضعیت webhook
+    webhook_status = "غیرفعال"
+    webhook_url = ""
+    try:
+        token = os.environ.get("TELEGRAM_BOT_TOKEN")
+        webhook_response = requests.get(f"https://api.telegram.org/bot{token}/getWebhookInfo", timeout=5)
+        
+        if webhook_response.status_code == 200 and webhook_response.json().get('ok', False):
+            webhook_info = webhook_response.json().get('result', {})
+            webhook_url = webhook_info.get('url', '')
+            
+            if webhook_url:
+                webhook_status = "فعال"
+            else:
+                webhook_status = "غیرفعال"
+    except Exception:
+        pass
+    
+    result = {
         "bot_status": "در حال اجرا" if global_bot else "متوقف",
         "database_status": db_status,
         "user_count": user_count,
         "account_count": account_count,
-        "status": "ok"
+        "environment": environment,
+        "webhook_status": webhook_status,
+        "webhook_url": webhook_url,
+        "status": "ok",
+        "environment_variables": {
+            "REPL_ID": os.environ.get("REPL_ID", ""),
+            "RAILWAY_STATIC_URL": os.environ.get("RAILWAY_STATIC_URL", ""),
+            "RAILWAY_PUBLIC_DOMAIN": os.environ.get("RAILWAY_PUBLIC_DOMAIN", ""),
+            "FORCE_BOT_START": os.environ.get("FORCE_BOT_START", "0") == "1",
+            "DISABLE_ENV_CHECK": os.environ.get("DISABLE_ENV_CHECK", "0") == "1"
+        }
+    }
+    
+    return jsonify(result)
+
+@app.route('/env')
+def environment_info():
+    """مسیر نمایش اطلاعات محیط اجرایی"""
+    # بررسی وضعیت محیط
+    is_replit = 'REPL_ID' in os.environ or 'REPLIT_DB_URL' in os.environ
+    is_railway = any(key.startswith('RAILWAY_') for key in os.environ)
+    
+    environment = "ناشناخته"
+    if is_replit and not is_railway:
+        environment = "Replit"
+    elif is_railway:
+        environment = "Railway"
+    
+    # متغیرهای محیطی مهم
+    env_vars = {}
+    important_vars = [
+        "REPL_ID", "REPLIT_DB_URL", 
+        "RAILWAY_STATIC_URL", "RAILWAY_PUBLIC_DOMAIN",
+        "FORCE_BOT_START", "DISABLE_ENV_CHECK",
+        "PORT", "DATABASE_URL"
+    ]
+    
+    for var in important_vars:
+        env_vars[var] = os.environ.get(var, "تنظیم نشده")
+    
+    # قابلیت دسترسی به توکن ربات (بدون نمایش آن)
+    has_bot_token = bool(os.environ.get("TELEGRAM_BOT_TOKEN"))
+    
+    # اطلاعات سیستم
+    system_info = {
+        "pid": os.getpid(),
+        "python_version": sys.version,
+        "current_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "hostname": os.uname().nodename if hasattr(os, 'uname') else "unknown"
+    }
+    
+    return jsonify({
+        "environment": environment,
+        "has_bot_token": has_bot_token,
+        "environment_variables": env_vars,
+        "system_info": system_info
+    })
+
+@app.route('/bot_status')
+def bot_detailed_status():
+    """مسیر نمایش وضعیت دقیق ربات تلگرام با اطلاعات کامل‌تر"""
+    # همه کدهای درخواست به API خارجی را حذف کرده‌ایم
+    
+    # وضعیت فعلی ربات در برنامه - این بخش سریع است و تایم‌اوت نمی‌شود
+    bot_app_status = {
+        "is_running": global_bot is not None,
+        "webhook_mode": getattr(global_bot, 'webhook_mode', False) if global_bot else False,
+        "environment_check_disabled": os.environ.get('DISABLE_ENV_CHECK') == '1',
+        "force_bot_start": os.environ.get('FORCE_BOT_START') == '1'
+    }
+    
+    # وضعیت محیط
+    is_replit = 'REPL_ID' in os.environ or 'REPLIT_DB_URL' in os.environ
+    is_railway = any(key.startswith('RAILWAY_') for key in os.environ)
+    
+    environment = "ناشناخته"
+    if is_replit and not is_railway:
+        environment = "Replit"
+    elif is_railway:
+        environment = "Railway"
+    
+    # اطلاعات سیستم
+    system_info = {
+        "pid": os.getpid(),
+        "python_version": sys.version,
+        "current_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "hostname": os.uname().nodename if hasattr(os, 'uname') else "unknown"
+    }
+    
+    # بسیار ساده و سریع
+    result = {
+        "status": "ok",
+        "bot_app_status": bot_app_status,
+        "environment": environment,
+        "system_info": system_info,
+        "has_token": bool(os.environ.get("TELEGRAM_BOT_TOKEN")),
+        "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "note": "اطلاعات API تلگرام به دلیل محدودیت زمانی ارائه نشده‌اند. برای دریافت آن‌ها از /bot_status_full استفاده کنید."
+    }
+    
+    return jsonify(result)
+
+@app.route('/bot_status_full')
+def bot_detailed_status_full():
+    """مسیر نمایش وضعیت کامل ربات تلگرام با همه جزئیات و اطلاعات API"""
+    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    if not token:
+        return jsonify({
+            "status": "error",
+            "message": "توکن ربات تلگرام یافت نشد!"
+        })
+    
+    # وضعیت فعلی ربات در برنامه
+    bot_app_status = {
+        "is_running": global_bot is not None,
+        "webhook_mode": getattr(global_bot, 'webhook_mode', False) if global_bot else False,
+        "environment_check_disabled": os.environ.get('DISABLE_ENV_CHECK') == '1',
+        "force_bot_start": os.environ.get('FORCE_BOT_START') == '1'
+    }
+    
+    # بررسی وضعیت ربات
+    bot_info = {}
+    try:
+        response = requests.get(f"https://api.telegram.org/bot{token}/getMe", timeout=2)
+        if response.status_code == 200 and response.json().get('ok', False):
+            bot_data = response.json().get('result', {})
+            bot_info = {
+                "id": bot_data.get('id'),
+                "username": bot_data.get('username'),
+                "first_name": bot_data.get('first_name'),
+                "is_bot": bot_data.get('is_bot'),
+                "can_join_groups": bot_data.get('can_join_groups'),
+                "can_read_all_group_messages": bot_data.get('can_read_all_group_messages'),
+                "supports_inline_queries": bot_data.get('supports_inline_queries')
+            }
+    except Exception as e:
+        bot_info = {"error": str(e)}
+    
+    # بررسی وضعیت webhook
+    webhook_info = {}
+    try:
+        response = requests.get(f"https://api.telegram.org/bot{token}/getWebhookInfo", timeout=2)
+        if response.status_code == 200 and response.json().get('ok', False):
+            webhook_data = response.json().get('result', {})
+            webhook_info = {
+                "url": webhook_data.get('url', ''),
+                "has_custom_certificate": webhook_data.get('has_custom_certificate', False),
+                "pending_update_count": webhook_data.get('pending_update_count', 0),
+                "last_error_date": webhook_data.get('last_error_date'),
+                "last_error_message": webhook_data.get('last_error_message', ''),
+                "max_connections": webhook_data.get('max_connections', 40),
+                "allowed_updates": webhook_data.get('allowed_updates', [])
+            }
+    except Exception as e:
+        webhook_info = {"error": str(e)}
+    
+    # بررسی محدودیت‌های API
+    api_limits = {}
+    try:
+        # تلاش برای فراخوانی یک متد ساده برای بررسی وضعیت محدودیت
+        response = requests.get(f"https://api.telegram.org/bot{token}/getUpdates?limit=1&timeout=1", timeout=1)
+        if response.status_code == 429:
+            rate_limit_data = response.json()
+            api_limits = {
+                "error_code": rate_limit_data.get('error_code'),
+                "description": rate_limit_data.get('description'),
+                "retry_after": rate_limit_data.get('parameters', {}).get('retry_after', 0)
+            }
+        elif response.status_code == 409:
+            api_limits = {
+                "error_code": 409,
+                "description": "Conflict: another instance of the bot is running",
+                "error_message": response.json().get('description', 'Unknown error')
+            }
+        else:
+            api_limits = {"status": "ok", "limits_reached": False}
+    except Exception as e:
+        api_limits = {"error": str(e)}
+    
+    # وضعیت فرآیندهای مرتبط با ربات
+    processes_info = {}
+    try:
+        import psutil
+        current_pid = os.getpid()
+        current_process = psutil.Process(current_pid)
+        
+        processes_info = {
+            "current_pid": current_pid,
+            "parent_pid": current_process.ppid(),
+            "threads_count": current_process.num_threads(),
+            "memory_usage_mb": current_process.memory_info().rss / (1024 * 1024),
+            "cpu_percent": current_process.cpu_percent(interval=0.1)
+        }
+    except Exception as e:
+        processes_info = {"error": str(e)}
+    
+    return jsonify({
+        "status": "ok",
+        "bot_info": bot_info,
+        "webhook_info": webhook_info,
+        "api_limits": api_limits,
+        "bot_app_status": bot_app_status,
+        "processes_info": processes_info,
+        "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     })
 
 @app.route('/healthz')
@@ -301,6 +555,97 @@ def health():
     """مسیر پشتیبان سلامت‌سنجی"""
     return "OK", 200
 
+@app.route('/running_bots')
+def running_bots():
+    """مسیر نمایش وضعیت ربات‌های در حال اجرا"""
+    import psutil
+    import threading
+    from models import db, User, Account
+    
+    # لیست ترد‌های فعال برنامه
+    active_threads = []
+    for thread in threading.enumerate():
+        active_threads.append({
+            "name": thread.name,
+            "id": thread.ident,
+            "daemon": thread.daemon,
+            "alive": thread.is_alive()
+        })
+    
+    # لیست فرآیندهای مربوط به تلگرام
+    telegram_processes = []
+    current_pid = os.getpid()
+    current_process = psutil.Process(current_pid)
+    
+    # بررسی فرآیند فعلی و فرزندان آن
+    process_info = {
+        "pid": current_process.pid,
+        "name": current_process.name(),
+        "status": current_process.status(),
+        "cpu_percent": current_process.cpu_percent(interval=0.1),
+        "memory_percent": current_process.memory_percent(),
+        "create_time": datetime.datetime.fromtimestamp(current_process.create_time()).strftime("%Y-%m-%d %H:%M:%S"),
+        "threads_count": current_process.num_threads()
+    }
+    telegram_processes.append(process_info)
+    
+    # بررسی وضعیت محیط
+    is_replit = 'REPL_ID' in os.environ or 'REPLIT_DB_URL' in os.environ
+    is_railway = any(key.startswith('RAILWAY_') for key in os.environ)
+    
+    environment = "ناشناخته"
+    if is_replit and not is_railway:
+        environment = "Replit"
+    elif is_railway:
+        environment = "Railway"
+    
+    # بررسی وضعیت ربات
+    bot_status = {
+        "is_running": global_bot is not None,
+        "webhook_mode": getattr(global_bot, 'webhook_mode', False) if global_bot else False,
+        "environment_check_disabled": os.environ.get('DISABLE_ENV_CHECK') == '1',
+        "force_bot_start": os.environ.get('FORCE_BOT_START') == '1'
+    }
+    
+    # اطلاعات دیتابیس
+    try:
+        users_count = db.session.query(User).count()
+        accounts_count = db.session.query(Account).count()
+        
+        # آخرین اکانت‌های ساخته شده
+        latest_accounts = []
+        for account in db.session.query(Account).order_by(Account.created_at.desc()).limit(5):
+            latest_accounts.append({
+                "id": account.id,
+                "gmail": account.gmail,
+                "status": account.status,
+                "created_at": account.created_at.strftime("%Y-%m-%d %H:%M:%S") if account.created_at else None,
+                "has_api_key": bool(account.api_key)
+            })
+            
+        db_info = {
+            "users_count": users_count,
+            "accounts_count": accounts_count,
+            "latest_accounts": latest_accounts,
+            "status": "connected"
+        }
+    except Exception as db_error:
+        logger.error(f"خطا در دسترسی به دیتابیس: {db_error}")
+        db_info = {
+            "status": "error",
+            "error": str(db_error)
+        }
+    
+    return jsonify({
+        "status": "ok",
+        "bot_status": bot_status,
+        "environment": environment,
+        "active_threads": active_threads,
+        "telegram_processes": telegram_processes,
+        "database": db_info,
+        "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
+
 @app.route('/restart', methods=['POST'])
 def restart_bot():
     """مسیر راه‌اندازی مجدد ربات"""
@@ -308,6 +653,62 @@ def restart_bot():
     global_bot = None  # پاک کردن ربات فعلی
     start_bot_in_thread()  # راه‌اندازی مجدد
     return jsonify({"status": "ربات با موفقیت راه‌اندازی مجدد شد"})
+
+@app.route('/force_start', methods=['POST'])
+def force_start_bot():
+    """مسیر راه‌اندازی اجباری ربات با نادیده گرفتن محیط اجرایی"""
+    global global_bot
+    
+    # قبل از راه‌اندازی، متغیر محیطی را تنظیم می‌کنیم
+    os.environ["FORCE_BOT_START"] = "1"
+    os.environ["DISABLE_ENV_CHECK"] = "1"
+    
+    logger.warning("🔔 راه‌اندازی اجباری ربات...")
+    
+    # پاک کردن ربات فعلی اگر وجود دارد
+    if global_bot:
+        logger.info("🔄 پاکسازی نمونه فعلی ربات...")
+        global_bot = None
+    
+    # اطمینان از پاکسازی وبهوک
+    try:
+        token = os.environ.get("TELEGRAM_BOT_TOKEN")
+        if token:
+            delete_response = requests.post(
+                f"https://api.telegram.org/bot{token}/deleteWebhook",
+                json={'drop_pending_updates': True},
+                timeout=10
+            )
+            if delete_response.status_code == 200:
+                logger.info("✅ وبهوک با موفقیت حذف شد")
+    except Exception as e:
+        logger.error(f"❌ خطا در حذف وبهوک: {e}")
+    
+    # راه‌اندازی ربات
+    bot = setup_bot()
+    if bot:
+        global_bot = bot
+        
+        # راه‌اندازی ربات در ترد جداگانه
+        bot_thread = threading.Thread(target=lambda: bot.run(), name="TelegramBotThread")
+        bot_thread.daemon = True
+        bot_thread.start()
+        logger.info(f"✅ ترد ربات با شناسه {bot_thread.ident} شروع به کار کرد")
+        
+        return jsonify({
+            "status": "ok",
+            "message": "ربات با موفقیت به صورت اجباری راه‌اندازی شد",
+            "bot_info": {
+                "username": bot.get_me().username if hasattr(bot, 'get_me') else "نامشخص",
+                "version": "2.1.0",
+                "thread_id": bot_thread.ident
+            }
+        })
+    else:
+        return jsonify({
+            "status": "error",
+            "message": "خطا در راه‌اندازی اجباری ربات"
+        })
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
@@ -403,6 +804,141 @@ def set_webhook():
     except Exception as e:
         logger.error(f"Error setting webhook: {e}")
         return jsonify({"status": "error", "message": str(e)})
+
+@app.route('/gemini_status')
+def gemini_status():
+    """مسیر بررسی وضعیت و اعتبار API Key های Google Gemini"""
+    from gemini_api_validator import GeminiAPIValidator
+    from models import db, Account
+    
+    # دریافت API Key‌ها از دیتابیس
+    api_keys = []
+    try:
+        # فقط API Key‌های غیر تکراری را دریافت می‌کنیم
+        accounts_with_api = db.session.query(Account).filter(Account.api_key.isnot(None)).filter(Account.api_key != '').all()
+        
+        # استخراج API Key‌ها
+        api_keys = list(set([account.api_key for account in accounts_with_api]))
+        
+        logger.info(f"تعداد {len(api_keys)} کلید API در دیتابیس یافت شد")
+    except Exception as e:
+        logger.error(f"خطا در دریافت API Key‌ها از دیتابیس: {e}")
+    
+    # نمونه API Key برای تست (اگر در متغیرهای محیطی تنظیم شده باشد)
+    sample_key = os.environ.get('GEMINI_API_KEY')
+    if sample_key and sample_key not in api_keys:
+        api_keys.append(sample_key)
+        logger.info("API Key نمونه از متغیرهای محیطی اضافه شد")
+    
+    # بررسی اعتبار API Key‌ها (حداکثر 5 کلید)
+    validator = GeminiAPIValidator()
+    validation_results = {}
+    
+    for i, api_key in enumerate(api_keys[:5]):  # محدود به 5 کلید برای جلوگیری از کندی
+        logger.info(f"در حال بررسی اعتبار API Key {i+1}/{min(len(api_keys), 5)}")
+        masked_key = api_key[:10] + "..." + api_key[-5:] if len(api_key) > 15 else api_key
+        
+        try:
+            success, details = validator.validate_api_key(api_key)
+            validation_results[masked_key] = {
+                "valid": success,
+                "details": details
+            }
+        except Exception as e:
+            logger.error(f"خطا در بررسی اعتبار API Key: {e}")
+            validation_results[masked_key] = {
+                "valid": False,
+                "error": str(e)
+            }
+    
+    # نمایش نتایج
+    return jsonify({
+        "status": "ok",
+        "api_keys_count": len(api_keys),
+        "api_keys_tested": min(len(api_keys), 5),
+        "validation_results": validation_results,
+        "db_accounts_with_api": len(accounts_with_api) if 'accounts_with_api' in locals() else 0,
+        "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
+
+@app.route('/twilio_status')
+def twilio_status():
+    """مسیر بررسی وضعیت و اعتبار Twilio"""
+    from twilio_integration import is_twilio_available, TwilioManager
+    
+    # بررسی دسترسی به Twilio
+    twilio_available = is_twilio_available()
+    
+    # اطلاعات دقیق‌تر در صورت دسترسی
+    details = {}
+    if twilio_available:
+        try:
+            # ایجاد مدیر Twilio
+            twilio_manager = TwilioManager()
+            
+            # دریافت موجودی حساب
+            success, balance, message = twilio_manager.get_account_balance()
+            details["balance"] = {
+                "success": success,
+                "value": balance,
+                "message": message
+            }
+            
+            # بررسی شماره پیش‌فرض
+            phone_number = os.environ.get('TWILIO_PHONE_NUMBER')
+            details["default_phone"] = {
+                "available": bool(phone_number),
+                "number": phone_number if phone_number else None
+            }
+            
+        except Exception as e:
+            logger.error(f"خطا در دریافت اطلاعات Twilio: {e}")
+            details["error"] = str(e)
+    
+    # نمایش نتایج
+    return jsonify({
+        "status": "ok",
+        "twilio_available": twilio_available,
+        "details": details,
+        "environment": {
+            "TWILIO_ACCOUNT_SID": bool(os.environ.get('TWILIO_ACCOUNT_SID')),
+            "TWILIO_AUTH_TOKEN": bool(os.environ.get('TWILIO_AUTH_TOKEN')),
+            "TWILIO_PHONE_NUMBER": bool(os.environ.get('TWILIO_PHONE_NUMBER'))
+        },
+        "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
+
+@app.route('/proxy_status')
+def proxy_status():
+    """مسیر بررسی وضعیت پروکسی‌ها"""
+    from proxy_manager import get_public_proxies, test_proxy
+    import concurrent.futures
+    
+    # دریافت پروکسی‌های فعلی (حداکثر 20 مورد برای تست سریع‌تر)
+    proxies = get_public_proxies()[:20]
+    
+    # تست همزمان پروکسی‌ها
+    working_proxies = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        future_to_proxy = {executor.submit(test_proxy, proxy, 2): proxy for proxy in proxies}
+        for future in concurrent.futures.as_completed(future_to_proxy):
+            proxy = future_to_proxy[future]
+            try:
+                is_working = future.result()
+                if is_working:
+                    working_proxies.append(proxy)
+            except Exception as e:
+                logger.error(f"خطا در تست پروکسی: {e}")
+    
+    # نمایش نتایج
+    return jsonify({
+        "status": "ok",
+        "total_proxies": len(proxies),
+        "working_proxies": len(working_proxies),
+        "proxies_tested": proxies,
+        "working_proxies_details": working_proxies,
+        "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
 
 @app.route('/remove_webhook')
 def remove_webhook():
