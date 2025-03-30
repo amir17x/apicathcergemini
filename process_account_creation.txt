@@ -1,0 +1,111 @@
+                    f"❌ <b>خطا در فرایند ساخت چند حساب</b>\n\n"
+                    f"پیام خطا: {str(e)}\n\n"
+                    f"در حال تلاش با یک حساب..."
+                )
+                # تلاش برای ساخت یک حساب
+                self.process_account_creation(chat_id, user_id, proxy)
+        else:
+            # اگر فقط یک حساب درخواست شده یا لیست پروکسی نداریم
+            self.process_account_creation(chat_id, user_id, proxy)
+    
+    def process_account_creation(self, chat_id, user_id, proxy=None):
+        """پردازش ساخت حساب و دریافت کلید API."""
+        # تولید اطلاعات تصادفی برای حساب
+        user_info = generate_random_user_info()
+        
+        # ارسال پیام وضعیت اولیه
+        self.send_message(chat_id, "⏳ <b>در حال ساخت حساب Gmail...</b>")
+        
+        try:
+            # مرحله ۱: ساخت حساب جیمیل
+            logger.info(f"Starting Gmail account creation for user {user_id}")
+            
+            gmail_result = gmail_creator.create_gmail_account(
+                first_name=user_info['first_name'],
+                last_name=user_info['last_name'],
+                username=user_info['username'],
+                password=user_info['password'],
+                birth_day=user_info['birth_day'],
+                birth_month=user_info['birth_month'],
+                birth_year=user_info['birth_year'],
+                gender=user_info['gender'],
+                proxy=proxy
+            )
+            
+            # بررسی نتیجه ساخت جیمیل
+            if not gmail_result['success']:
+                self.send_message(
+                    chat_id, 
+                    f"❌ <b>خطا در ساخت حساب Gmail</b>\n\n"
+                    f"پیام خطا: {gmail_result.get('error', 'خطای نامشخص')}\n\n"
+                    f"لطفاً دوباره تلاش کنید یا از پروکسی استفاده کنید.",
+                )
+                # بازگشت به منوی اصلی
+                self.show_main_menu(chat_id, user_id)
+                return
+            
+            # ساخت جیمیل موفقیت‌آمیز بود
+            gmail = gmail_result['gmail']
+            
+            # به‌روزرسانی پیام وضعیت
+            self.send_message(
+                chat_id,
+                f"✅ <b>حساب Gmail با موفقیت ساخته شد:</b>\n"
+                f"📧 {gmail}\n\n"
+                f"⏳ <b>در حال دریافت کلید API Gemini...</b>"
+            )
+            
+            # مرحله ۲: دریافت کلید API
+            logger.info(f"Starting API key generation for {gmail}")
+            
+            api_result = api_key_generator.generate_api_key(
+                gmail=gmail,
+                password=user_info['password'],
+                proxy=proxy
+            )
+            
+            # دریافت تاریخ و زمان فعلی
+            current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            # ایجاد لیست حساب‌ها اگر موجود نیست
+            if 'accounts' not in self.user_data[user_id]:
+                self.user_data[user_id]['accounts'] = []
+            
+            # بررسی نتیجه دریافت کلید API
+            if not api_result['success']:
+                # دریافت کلید API ناموفق بود اما حساب جیمیل ساخته شد
+                partial_success_message = (
+                    f"⚠️ <b>حساب Gmail ساخته شد اما دریافت API ناموفق بود</b> ⚠️\n\n"
+                    f"✅ <b>حساب Gmail:</b>\n<code>{gmail}</code>\n\n"
+                    f"🔒 <b>رمز عبور:</b>\n<code>{user_info['password']}</code>\n\n"
+                    f"❌ <b>خطا در دریافت کلید API:</b>\n"
+                    f"{api_result.get('error', 'خطای نامشخص')}\n\n"
+                    f"✨ <b>اطلاعات حساب:</b>\n"
+                    f"👤 نام: {user_info['first_name']} {user_info['last_name']}\n"
+                    f"📅 تاریخ تولد: {user_info['birth_day']}/{user_info['birth_month']}/{user_info['birth_year']}\n"
+                    f"⏱️ تاریخ ایجاد: {current_time}\n\n"
+                    f"🔄 <b>دریافت دستی کلید API:</b>\n"
+                    f"1️⃣ با حساب Gmail ساخته شده وارد سایت https://aistudio.google.com شوید\n"
+                    f"2️⃣ به بخش API Key در حساب کاربری خود بروید\n"
+                    f"3️⃣ روی دکمه 'Create API Key' کلیک کنید\n"
+                    f"4️⃣ کلید ساخته شده را کپی کنید\n\n"
+                    f"⚠️ <b>توجه:</b> اطلاعات حساب Gmail را در جایی امن ذخیره کنید."
+                )
+                self.send_message(chat_id, partial_success_message)
+                
+                # ذخیره اطلاعات حساب بدون کلید API در کش
+                self.user_data[user_id]['accounts'].append({
+                    'gmail': gmail,
+                    'password': user_info['password'],
+                    'api_key': None,
+                    'status': 'api_failed',
+                    'created_at': current_time
+                })
+                
+                # ذخیره اطلاعات در دیتابیس اگر فعال است
+                if self.use_db:
+                    try:
+                        from flask import current_app
+                        with current_app.app_context():
+                            # یافتن یا ایجاد کاربر
+                            user_db = self.User.query.filter_by(telegram_id=str(user_id)).first()

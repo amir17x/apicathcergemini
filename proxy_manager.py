@@ -234,28 +234,79 @@ def format_proxy_for_requests(proxy_data):
         logger.warning(f"نوع پروکسی نامعتبر: {proxy_type}")
         return None
 
-def test_proxy(proxy_data, timeout=5):
-    """تست کارکرد پروکسی"""
+def test_proxy(proxy_data, timeout=3):
+    """
+    تست کارکرد پروکسی با تایم‌اوت کوتاه‌تر و مدیریت خطای بهتر
+    
+    Args:
+        proxy_data: دیکشنری اطلاعات پروکسی
+        timeout: زمان انتظار به ثانیه (کوتاه‌تر برای جلوگیری از کرش)
+        
+    Returns:
+        bool: نتیجه تست پروکسی (True اگر کار می‌کند)
+    """
     formatted_proxy = format_proxy_for_requests(proxy_data)
     if not formatted_proxy:
         return False
     
-    try:
-        logger.info(f"تست پروکسی: {proxy_data.get('host')}:{proxy_data.get('port')}")
-        start_time = time.time()
-        response = requests.get("https://httpbin.org/ip", 
-                               proxies=formatted_proxy, 
-                               timeout=timeout)
-        elapsed = time.time() - start_time
+    # بررسی ورودی برای جلوگیری از خطاهای عجیب
+    host = proxy_data.get('host', '')
+    port = proxy_data.get('port', '')
+    if not host or not port:
+        logger.warning(f"پروکسی نامعتبر (host یا port خالی است): {proxy_data}")
+        return False
         
-        if response.status_code == 200:
-            logger.info(f"پروکسی کار می‌کند. زمان پاسخ: {elapsed:.2f} ثانیه")
-            return True
-        else:
-            logger.warning(f"پروکسی کار نمی‌کند. کد وضعیت: {response.status_code}")
+    try:
+        logger.info(f"تست پروکسی: {host}:{port}")
+        
+        # استفاده از سایت ساده‌تر برای تست سریع‌تر
+        test_url = "http://httpbin.org/status/200"
+        
+        # تایم‌اوت کوتاه برای جلوگیری از معطلی طولانی
+        start_time = time.time()
+        
+        # درخواست با کنترل خطای بیشتر
+        try:
+            response = requests.get(
+                test_url, 
+                proxies=formatted_proxy, 
+                timeout=timeout,
+                stream=True,  # برای جلوگیری از دانلود کامل محتوا
+                verify=False,  # برای جلوگیری از مشکلات SSL
+                allow_redirects=False  # برای جلوگیری از ریدایرکت‌های طولانی
+            )
+            
+            # فقط هدر را بررسی می‌کنیم، نه محتوا
+            resp_code = response.status_code
+            response.close()  # بستن اتصال به سرعت
+            
+            elapsed = time.time() - start_time
+            
+            if resp_code < 400:  # هر کد موفقیت یا ریدایرکت قابل قبول است
+                logger.info(f"پروکسی کار می‌کند. زمان پاسخ: {elapsed:.2f} ثانیه")
+                return True
+            else:
+                logger.warning(f"پروکسی خطا برگرداند. کد وضعیت: {resp_code}")
+                return False
+                
+        except requests.exceptions.ConnectTimeout:
+            logger.warning(f"تایم‌اوت اتصال به پروکسی {host}:{port}")
             return False
+        except requests.exceptions.ReadTimeout:
+            logger.warning(f"تایم‌اوت خواندن از پروکسی {host}:{port}")
+            return False
+        except requests.exceptions.ProxyError:
+            logger.warning(f"خطای پروکسی برای {host}:{port}")
+            return False
+        except requests.exceptions.SSLError:
+            logger.warning(f"خطای SSL برای پروکسی {host}:{port}")
+            return False
+        except Exception as req_e:
+            logger.warning(f"خطای درخواست: {req_e}")
+            return False
+            
     except Exception as e:
-        logger.warning(f"خطا در تست پروکسی: {e}")
+        logger.warning(f"خطای نامشخص در تست پروکسی: {e}")
         return False
 
 def get_proxyscrape_proxies(api_url=None):
@@ -400,9 +451,132 @@ def find_working_proxy_from_list(proxy_list):
     logger.warning("هیچ پروکسی کارآمدی در لیست پیدا نشد")
     return None
 
+def read_proxy_file(file_path):
+    """
+    خواندن فایل حاوی لیست پروکسی‌ها
+    
+    Args:
+        file_path: مسیر فایل حاوی پروکسی‌ها (هر پروکسی در یک خط)
+        
+    Returns:
+        list: لیست دیکشنری‌های پروکسی
+    """
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            proxy_text = f.read()
+        return parse_proxy_list(proxy_text)
+    except Exception as e:
+        logger.error(f"خطا در خواندن فایل پروکسی: {e}")
+        return []
+
+def save_temp_proxy_file(proxy_text, user_id):
+    """
+    ذخیره موقت متن پروکسی در فایل
+    
+    Args:
+        proxy_text: متن حاوی لیست پروکسی‌ها
+        user_id: شناسه کاربر برای ایجاد فایل مختص کاربر
+        
+    Returns:
+        str: مسیر فایل ذخیره شده
+    """
+    try:
+        file_path = f"/tmp/proxies_{user_id}.txt"
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(proxy_text)
+        return file_path
+    except Exception as e:
+        logger.error(f"خطا در ذخیره فایل موقت پروکسی: {e}")
+        return None
+
+def find_multiple_working_proxies(proxy_list, count=1, timeout=3, max_workers=3):
+    """
+    یافتن چندین پروکسی کارآمد از لیست پروکسی‌ها با استفاده از اجرای همزمان
+    با محدودیت‌های سختگیرانه برای جلوگیری از کرش شدن
+    
+    Args:
+        proxy_list: لیست دیکشنری‌های پروکسی
+        count: تعداد پروکسی‌های کارآمد مورد نیاز
+        timeout: زمان انتظار برای تست هر پروکسی (ثانیه)
+        max_workers: حداکثر تعداد تردهای همزمان برای تست پروکسی‌ها
+        
+    Returns:
+        list: لیست پروکسی‌های کارآمد
+    """
+    if not proxy_list:
+        logger.warning("لیست پروکسی خالی است!")
+        return []
+        
+    # محدود کردن تعداد پروکسی‌ها به 50 تا برای حفاظت از سرور
+    limited_proxy_list = proxy_list[:50]
+    logger.info(f"تست {len(limited_proxy_list)} پروکسی (از مجموع {len(proxy_list)}) برای یافتن {count} پروکسی کارآمد...")
+    working_proxies = []
+    
+    # روش امن‌تر: ابتدا تست ترتیبی تا پیدا کردن اولین پروکسی سالم
+    for i, proxy in enumerate(limited_proxy_list[:10]):
+        try:
+            logger.info(f"تست ترتیبی پروکسی {i+1}/10: {proxy.get('host')}:{proxy.get('port')}")
+            is_working = test_proxy(proxy, timeout)
+            if is_working:
+                logger.info(f"پروکسی کارآمد یافت شد: {proxy.get('host')}:{proxy.get('port')}")
+                working_proxies.append(proxy)
+                if len(working_proxies) >= count:
+                    return working_proxies
+        except Exception as e:
+            logger.error(f"خطا در تست پروکسی {proxy.get('host')}:{proxy.get('port')}: {e}")
+        
+        # اضافه کردن تاخیر کوتاه بین درخواست‌ها برای جلوگیری از فشار بیش از حد
+        time.sleep(0.2)
+    
+    # اگر هنوز به تعداد کافی نرسیده‌ایم، از روش موازی با محدودیت استفاده می‌کنیم
+    if len(working_proxies) < count and limited_proxy_list[10:]:
+        try:
+            remaining_proxies = limited_proxy_list[10:]
+            logger.info(f"تست موازی {len(remaining_proxies)} پروکسی باقیمانده با {max_workers} کارگر همزمان...")
+            
+            # تقسیم باقیمانده پروکسی‌ها به گروه‌های کوچک برای جلوگیری از کرش
+            batch_size = 10
+            remaining_count = count - len(working_proxies)
+            
+            for i in range(0, len(remaining_proxies), batch_size):
+                batch = remaining_proxies[i:i+batch_size]
+                
+                logger.info(f"پردازش گروه {i//batch_size + 1} با {len(batch)} پروکسی...")
+                
+                # برای تست همزمان پروکسی‌ها از ThreadPoolExecutor استفاده می‌کنیم
+                with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                    future_to_proxy = {executor.submit(test_proxy, proxy, timeout): proxy for proxy in batch}
+                    
+                    for future in concurrent.futures.as_completed(future_to_proxy):
+                        proxy = future_to_proxy[future]
+                        try:
+                            is_working = future.result()
+                            if is_working:
+                                logger.info(f"پروکسی کارآمد یافت شد: {proxy.get('host')}:{proxy.get('port')}")
+                                working_proxies.append(proxy)
+                                
+                                # اگر به تعداد مورد نیاز رسیدیم، خروج از حلقه
+                                if len(working_proxies) >= count:
+                                    break
+                        except Exception as e:
+                            logger.error(f"خطا در تست پروکسی {proxy.get('host')}:{proxy.get('port')}: {e}")
+                
+                # اگر به تعداد مورد نیاز رسیدیم، خروج از حلقه اصلی
+                if len(working_proxies) >= count:
+                    break
+                
+                # اضافه کردن تاخیر بین دسته‌ها
+                time.sleep(0.5)
+                
+        except Exception as e:
+            logger.error(f"خطا در تست موازی پروکسی‌ها: {e}")
+    
+    logger.info(f"{len(working_proxies)} پروکسی کارآمد از {len(limited_proxy_list)} پروکسی پیدا شد.")
+    return working_proxies
+
 def get_proxy_from_api_url(api_url):
     """
-    دریافت پروکسی از یک URL API خارجی
+    دریافت پروکسی از یک URL API خارجی با مدیریت خطای بهتر و محدودیت‌های سختگیرانه
     
     Args:
         api_url: آدرس API برای دریافت پروکسی
@@ -412,23 +586,68 @@ def get_proxy_from_api_url(api_url):
     """
     logger.info(f"دریافت پروکسی از URL API خارجی: {api_url}")
     
-    # ابتدا دریافت لیست پروکسی‌ها
-    proxies = get_proxyscrape_proxies(api_url)
-    
-    # اگر پروکسی دریافت نشد
-    if not proxies:
-        logger.warning(f"هیچ پروکسی از {api_url} دریافت نشد")
-        return None
-    
-    # تست پروکسی‌ها
-    logger.info(f"تست {len(proxies)} پروکسی دریافت شده از API خارجی")
-    for proxy in proxies[:15]:  # حداکثر 15 پروکسی را تست می‌کنیم
-        if test_proxy(proxy):
-            logger.info(f"پروکسی کارآمد از API خارجی پیدا شد: {proxy.get('host')}:{proxy.get('port')}")
-            return proxy
+    try:
+        # بررسی اعتبار URL
+        if not api_url.startswith(('http://', 'https://')):
+            logger.warning(f"URL نامعتبر: {api_url}")
+            return None
             
-    logger.warning(f"هیچ پروکسی کارآمدی از {len(proxies)} پروکسی دریافت شده پیدا نشد")
-    return None
+        # تنظیم تایم‌اوت و تعداد تلاش مجدد
+        max_retries = 2
+        request_timeout = 5
+        
+        # تلاش برای دریافت پروکسی‌ها با تعداد محدود تلاش مجدد
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"تلاش {attempt+1}/{max_retries} برای دریافت پروکسی از API...")
+                
+                # ابتدا دریافت لیست پروکسی‌ها
+                proxies = get_proxyscrape_proxies(api_url)
+                
+                # اگر پروکسی دریافت نشد
+                if not proxies:
+                    logger.warning(f"هیچ پروکسی از {api_url} دریافت نشد")
+                    time.sleep(1)  # تاخیر قبل از تلاش مجدد
+                    continue
+                
+                # تست پروکسی‌ها
+                test_count = min(10, len(proxies))  # حداکثر 10 پروکسی را تست می‌کنیم
+                logger.info(f"تست {test_count} پروکسی از {len(proxies)} پروکسی دریافت شده از API خارجی")
+                
+                # روش امن‌تر: تست ترتیبی با تاخیر
+                for i, proxy in enumerate(proxies[:test_count]):
+                    logger.info(f"تست پروکسی {i+1}/{test_count}: {proxy.get('host')}:{proxy.get('port')}")
+                    try:
+                        if test_proxy(proxy, timeout=3):
+                            logger.info(f"پروکسی کارآمد از API خارجی پیدا شد: {proxy.get('host')}:{proxy.get('port')}")
+                            return proxy
+                    except Exception as e:
+                        logger.warning(f"خطا در تست پروکسی {i+1}/{test_count}: {e}")
+                    
+                    # تاخیر کوتاه بین تست‌ها
+                    time.sleep(0.2)
+                
+                # اگر به اینجا رسیدیم، هیچ پروکسی کارآمدی پیدا نشد
+                logger.warning(f"هیچ پروکسی کارآمدی از {test_count} پروکسی تست شده پیدا نشد")
+                time.sleep(1)  # تاخیر قبل از تلاش مجدد
+                
+            except requests.exceptions.Timeout:
+                logger.warning(f"تایم‌اوت در دریافت پروکسی از API (تلاش {attempt+1}/{max_retries})")
+                time.sleep(1)  # تاخیر قبل از تلاش مجدد
+            except requests.exceptions.ConnectionError:
+                logger.warning(f"خطای اتصال در دریافت پروکسی از API (تلاش {attempt+1}/{max_retries})")
+                time.sleep(1)  # تاخیر قبل از تلاش مجدد
+            except Exception as e:
+                logger.warning(f"خطای نامشخص در دریافت پروکسی از API: {e}")
+                break  # در صورت خطاهای نامشخص، خروج از حلقه
+                
+        # اگر به اینجا رسیدیم، تمام تلاش‌ها ناموفق بوده است
+        logger.warning(f"تمام تلاش‌ها برای دریافت پروکسی از API ناموفق بود: {api_url}")
+        return None
+        
+    except Exception as e:
+        logger.error(f"خطای کلی در دریافت پروکسی از API: {e}")
+        return None
 
 def get_proxy(custom_proxy=None, api_url=None):
     """

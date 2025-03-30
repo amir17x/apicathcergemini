@@ -86,14 +86,40 @@ def start_bot_thread():
     
     # اگر ترد قبلی وجود داشته باشد، ابتدا آن را متوقف می‌کنیم
     if _bot_thread and _bot_thread.is_alive():
-        logger.info(f"Stopping previous bot thread with ID: {_bot_thread.ident}")
-        # ما نمی‌توانیم به طور مستقیم ترد را متوقف کنیم، اما می‌توانیم آن را نادیده بگیریم
-        _bot_thread = None
-        # کمی صبر می‌کنیم تا ترد قبلی بسته شود
-        time.sleep(2)
+        logger.info(f"🛑 ترد قبلی ربات با شناسه {_bot_thread.ident} در حال اجراست. فعلاً نمونه جدیدی راه‌اندازی نمی‌شود.")
+        return  # اگر ربات در حال اجراست، نمونه جدیدی راه‌اندازی نمی‌کنیم
     
-    if not _bot_thread or not _bot_thread.is_alive():
-        logger.info("Starting bot in a separate thread")
+    # ثبت یک فایل قفل برای جلوگیری از اجرای همزمان چند ربات
+    lock_file = '/tmp/telegram_bot.lock'
+    
+    # بررسی اینکه آیا قفل قبلی وجود دارد
+    if os.path.exists(lock_file):
+        try:
+            with open(lock_file, 'r') as f:
+                pid = f.read().strip()
+                # بررسی اینکه آیا پروسه قبلی هنوز در حال اجراست
+                try:
+                    os.kill(int(pid), 0)  # سیگنال 0 فقط برای بررسی وجود پروسه است
+                    logger.info(f"🛑 یک نمونه دیگر از ربات با PID {pid} در حال اجراست.")
+                    return
+                except OSError:
+                    # پروسه دیگر وجود ندارد، فایل قفل را حذف می‌کنیم
+                    logger.info(f"🔓 فایل قفل قدیمی متعلق به PID {pid} پیدا شد اما پروسه در حال اجرا نیست. قفل حذف می‌شود.")
+                    os.remove(lock_file)
+        except Exception as e:
+            logger.error(f"❌ خطا در بررسی فایل قفل: {e}")
+            # حذف فایل قفل مشکوک
+            try:
+                os.remove(lock_file)
+            except:
+                pass
+    
+    # ایجاد قفل جدید
+    try:
+        with open(lock_file, 'w') as f:
+            f.write(str(os.getpid()))
+        
+        logger.info("🚀 شروع ربات در یک ترد جداگانه")
         
         def bot_runner():
             try:
@@ -101,8 +127,8 @@ def start_bot_thread():
                 # Set logging level to debug for more information
                 logging.getLogger().setLevel(logging.DEBUG)
                 
-                # Create and run the bot
-                bot = InlineTelegramBot()
+                # Create and run the bot with Flask app passed for context
+                bot = InlineTelegramBot(app=app)
                 logger.info(f"Bot instance created, token valid: {bool(bot.token)}")
                 
                 # Test connection to Telegram API
@@ -137,8 +163,12 @@ def start_bot_thread():
         _bot_thread.daemon = True
         _bot_thread.start()
         logger.info(f"Bot thread started with ID: {_bot_thread.ident}")
-    else:
-        logger.info(f"Bot thread already running with ID: {_bot_thread.ident}")
+    except Exception as e:
+        logger.error(f"❌ خطا در راه‌اندازی ربات: {e}")
+        
+    # اگر ترد قبلاً در حال اجرا بود، اعلام می‌کنیم
+    if _bot_thread and _bot_thread.is_alive():
+        logger.info(f"✅ ترد ربات با شناسه {_bot_thread.ident} در حال اجراست.")
 
 # Define routes for the Flask app
 @app.route('/')

@@ -14,4 +14,7 @@ dependencies = [
     "selenium>=4.30.0",
     "sqlalchemy>=2.0.40",
     "telegram>=0.0.1",
+    "twilio>=9.5.1",
+    "undetected-chromedriver>=3.5.5",
+    "webdriver-manager>=4.0.2",
 ]
